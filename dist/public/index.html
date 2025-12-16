@@ -23,5 +23,146 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function() {
+        let lastPoints = null;
+        let activityTracker = {
+          reading: { startTime: null, accumulated: 0 },
+          watching: { startTime: null, accumulated: 0 },
+          playing: { startTime: null, accumulated: 0 }
+        };
+
+        async function fetchAndUpdatePoints() {
+          try {
+            const res = await fetch('/api/points', { credentials: 'include' });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.points !== lastPoints) {
+                lastPoints = data.points;
+                updatePointsDisplay(data.points);
+              }
+            }
+          } catch (e) {}
+        }
+
+        function updatePointsDisplay(points) {
+          const selectors = [
+            '[class*="points"]',
+            '[class*="Points"]',
+            '[data-points]'
+          ];
+          document.querySelectorAll('*').forEach(el => {
+            const text = el.textContent || '';
+            if (el.children.length === 0 && /^\d+\s*(pts?|points?)?$/i.test(text.trim())) {
+              const parent = el.parentElement;
+              if (parent && (parent.innerHTML.includes('Star') || parent.innerHTML.includes('star') || 
+                  parent.className.includes('point') || parent.className.includes('Point'))) {
+                el.textContent = points.toLocaleString() + (text.includes('pts') ? ' pts' : text.includes('pt') ? ' pt' : '');
+              }
+            }
+          });
+        }
+
+        async function trackActivity(type, seconds) {
+          if (seconds <= 0) return;
+          try {
+            await fetch('/api/activity/track', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ activityType: type, seconds: Math.round(seconds) })
+            });
+          } catch (e) {}
+        }
+
+        window.whypalsTracker = {
+          startReading: function() {
+            if (!activityTracker.reading.startTime) {
+              activityTracker.reading.startTime = Date.now();
+            }
+          },
+          stopReading: function() {
+            if (activityTracker.reading.startTime) {
+              const elapsed = Math.floor((Date.now() - activityTracker.reading.startTime) / 1000);
+              trackActivity('reading', elapsed);
+              activityTracker.reading.startTime = null;
+            }
+          },
+          startPlaying: function() {
+            if (!activityTracker.playing.startTime) {
+              activityTracker.playing.startTime = Date.now();
+            }
+          },
+          stopPlaying: function() {
+            if (activityTracker.playing.startTime) {
+              const elapsed = Math.floor((Date.now() - activityTracker.playing.startTime) / 1000);
+              trackActivity('playing', elapsed);
+              activityTracker.playing.startTime = null;
+            }
+          },
+          startWatching: function() {
+            if (!activityTracker.watching.startTime) {
+              activityTracker.watching.startTime = Date.now();
+            }
+          },
+          stopWatching: function() {
+            if (activityTracker.watching.startTime) {
+              const elapsed = Math.floor((Date.now() - activityTracker.watching.startTime) / 1000);
+              trackActivity('watching', elapsed);
+              activityTracker.watching.startTime = null;
+            }
+          },
+          refreshPoints: fetchAndUpdatePoints
+        };
+
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+          const response = await originalFetch.apply(this, args);
+          const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+          
+          if (url.includes('/api/games/') && url.includes('/complete')) {
+            setTimeout(fetchAndUpdatePoints, 500);
+          }
+          
+          return response;
+        };
+
+        setInterval(fetchAndUpdatePoints, 10000);
+        setTimeout(fetchAndUpdatePoints, 2000);
+
+        let currentPath = window.location.pathname;
+        const observer = new MutationObserver(() => {
+          const newPath = window.location.pathname;
+          if (newPath !== currentPath) {
+            const wasStory = currentPath.includes('/story/') || currentPath.includes('/stories/');
+            const wasGame = currentPath.includes('/game/') || currentPath.includes('/games/');
+            const wasVideo = currentPath.includes('/video/') || currentPath.includes('/videos/');
+
+            if (wasStory) window.whypalsTracker.stopReading();
+            if (wasGame) window.whypalsTracker.stopPlaying();
+            if (wasVideo) window.whypalsTracker.stopWatching();
+
+            const isStory = newPath.includes('/story/') || newPath.includes('/stories/');
+            const isGame = newPath.includes('/game/') || newPath.includes('/games/');
+            const isVideo = newPath.includes('/video/') || newPath.includes('/videos/');
+
+            if (isStory) window.whypalsTracker.startReading();
+            if (isGame) window.whypalsTracker.startPlaying();
+            if (isVideo) window.whypalsTracker.startWatching();
+
+            currentPath = newPath;
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        window.addEventListener('beforeunload', () => {
+          window.whypalsTracker.stopReading();
+          window.whypalsTracker.stopPlaying();
+          window.whypalsTracker.stopWatching();
+        });
+
+        console.log('WhyPals Activity Tracker initialized');
+      })();
+    </script>
   </body>
 </html>
