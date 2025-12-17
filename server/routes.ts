@@ -673,7 +673,8 @@ export async function registerRoutes(
       const { key } = await uploadImageToR2(
         req.file.buffer,
         req.file.originalname,
-        req.file.mimetype
+        req.file.mimetype,
+        'story-thumbnails'
       );
       
       const imageUrl = `/api/images/${key}`;
@@ -684,10 +685,66 @@ export async function registerRoutes(
     }
   });
 
+  // Image upload for game images - admin only
+  app.post('/api/admin/upload/game-image', upload.single('image'), async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      const { key } = await uploadImageToR2(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        'game-images'
+      );
+      
+      const imageUrl = `/api/images/${key}`;
+      res.json({ imageUrl, key });
+    } catch (error) {
+      console.error("Error uploading game image:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
+  // Image upload for story content images - admin only
+  app.post('/api/admin/upload/story-content-image', upload.single('image'), async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      const { key } = await uploadImageToR2(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        'story-content'
+      );
+      
+      const imageUrl = `/api/images/${key}`;
+      res.json({ imageUrl, key });
+    } catch (error) {
+      console.error("Error uploading story content image:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
+  // Allowed image folders for access
+  const ALLOWED_IMAGE_FOLDERS = ['story-thumbnails', 'game-images', 'story-content'];
+
   app.get('/api/images/:key(*)', async (req, res) => {
     try {
       const key = req.params.key;
-      if (!key.startsWith('story-thumbnails/')) {
+      const isAllowed = ALLOWED_IMAGE_FOLDERS.some(folder => key.startsWith(`${folder}/`));
+      if (!isAllowed) {
         return res.status(403).json({ message: "Access denied" });
       }
       const signedUrl = await getImageSignedUrl(key);

@@ -93,13 +93,13 @@ export async function getImageUploadUrl(filename: string): Promise<{ uploadUrl: 
   return { uploadUrl, publicUrl, key };
 }
 
-export async function uploadImageToR2(file: Buffer, filename: string, contentType: string): Promise<{ key: string }> {
+export async function uploadImageToR2(file: Buffer, filename: string, contentType: string, folder: string = 'story-thumbnails'): Promise<{ key: string }> {
   if (!R2_BUCKET_NAME) {
     throw new Error("R2_BUCKET_NAME not configured");
   }
 
   const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-  const key = `story-thumbnails/${Date.now()}-${sanitizedFilename}`;
+  const key = `${folder}/${Date.now()}-${sanitizedFilename}`;
   
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET_NAME,
