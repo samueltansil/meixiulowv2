@@ -9,7 +9,7 @@
     "dev:server": "NODE_ENV=development tsx watch server/index.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
-    "build:server": "esbuild server/index.ts --bundle --platform=node --outfile=server/dist/index.cjs --format=cjs --packages=external",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --outfile=server/dist/index.cjs --format=cjs --packages=external --external:./vite",
     "start": "NODE_ENV=production node server/dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push"

@@ -5,9 +5,6 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -29,118 +26,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// vite.config.ts
-var import_vite, import_plugin_react, import_vite2, import_path2, import_meta, vite_config_default;
-var init_vite_config = __esm({
-  "vite.config.ts"() {
-    "use strict";
-    import_vite = require("vite");
-    import_plugin_react = __toESM(require("@vitejs/plugin-react"), 1);
-    import_vite2 = __toESM(require("@tailwindcss/vite"), 1);
-    import_path2 = __toESM(require("path"), 1);
-    import_meta = {};
-    vite_config_default = (0, import_vite.defineConfig)({
-      plugins: [
-        (0, import_plugin_react.default)(),
-        (0, import_vite2.default)()
-      ],
-      resolve: {
-        alias: {
-          "@": import_path2.default.resolve(import_meta.dirname, "client", "src"),
-          "@shared": import_path2.default.resolve(import_meta.dirname, "shared"),
-          "@assets": import_path2.default.resolve(import_meta.dirname, "attached_assets")
-        }
-      },
-      css: {
-        postcss: {
-          plugins: []
-        }
-      },
-      root: import_path2.default.resolve(import_meta.dirname, "client"),
-      build: {
-        outDir: import_path2.default.resolve(import_meta.dirname, "client", "dist"),
-        emptyOutDir: true
-      },
-      server: {
-        host: "0.0.0.0",
-        port: 5e3,
-        allowedHosts: true,
-        fs: {
-          strict: true,
-          deny: ["**/.*"]
-        },
-        proxy: {
-          "/api": {
-            target: "http://localhost:3001",
-            changeOrigin: true
-          }
-        }
-      }
-    });
-  }
-});
-
-// server/vite.ts
-var vite_exports = {};
-__export(vite_exports, {
-  setupVite: () => setupVite
-});
-async function setupVite(server, app2) {
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server, path: "/vite-hmr" },
-    allowedHosts: true
-  };
-  const vite = await (0, import_vite3.createServer)({
-    ...vite_config_default,
-    configFile: false,
-    customLogger: {
-      ...viteLogger,
-      error: (msg, options) => {
-        viteLogger.error(msg, options);
-        process.exit(1);
-      }
-    },
-    server: serverOptions,
-    appType: "custom"
-  });
-  app2.use(vite.middlewares);
-  app2.use("*", async (req, res, next) => {
-    const url = req.originalUrl;
-    try {
-      const clientTemplate = import_path3.default.resolve(
-        import_meta2.dirname,
-        "..",
-        "client",
-        "index.html"
-      );
-      let template = await import_fs2.default.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${(0, import_nanoid.nanoid)()}"`
-      );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
-    } catch (e) {
-      vite.ssrFixStacktrace(e);
-      next(e);
-    }
-  });
-}
-var import_vite3, import_fs2, import_path3, import_nanoid, import_meta2, viteLogger;
-var init_vite = __esm({
-  "server/vite.ts"() {
-    "use strict";
-    import_vite3 = require("vite");
-    init_vite_config();
-    import_fs2 = __toESM(require("fs"), 1);
-    import_path3 = __toESM(require("path"), 1);
-    import_nanoid = require("nanoid");
-    import_meta2 = {};
-    viteLogger = (0, import_vite3.createLogger)();
-  }
-});
 
 // server/index.ts
 var index_exports = {};
@@ -2148,7 +2033,7 @@ function log(message, source = "express") {
 }
 app.use((req, res, next) => {
   const start = Date.now();
-  const path4 = req.path;
+  const path2 = req.path;
   let capturedJsonResponse = void 0;
   const originalResJson = res.json;
   res.json = function(bodyJson, ...args) {
@@ -2157,8 +2042,8 @@ app.use((req, res, next) => {
   };
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path4.startsWith("/api")) {
-      let logLine = `${req.method} ${path4} ${res.statusCode} in ${duration}ms`;
+    if (path2.startsWith("/api")) {
+      let logLine = `${req.method} ${path2} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
@@ -2178,8 +2063,8 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
-    const { setupVite: setupVite2 } = await Promise.resolve().then(() => (init_vite(), vite_exports));
-    await setupVite2(httpServer, app);
+    const { setupVite } = await import("./vite");
+    await setupVite(httpServer, app);
   }
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
