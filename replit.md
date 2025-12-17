@@ -1,7 +1,9 @@
-# NewsPals - Kids News Platform
+# WhyPals - Kids Educational Platform
+
+> See `README.md` for complete setup, deployment, and API documentation.
 
 ## Overview
-NewsPals is a full-stack web application providing a safe, engaging, and educational news platform for children. It offers articles, videos, and games within a kid-friendly interface, featuring custom mascots and playful design. The platform aims to educate and entertain, with future plans for a teacher-contributed coursework marketplace and a comprehensive activity and points system to encourage engagement.
+WhyPals is a full-stack web application providing a safe, engaging, and educational platform for children. It offers articles, videos, and games within a kid-friendly interface, featuring custom mascots and playful design.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

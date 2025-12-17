@@ -1,0 +1,135 @@
+Please perform a final, exhaustive audit of my project to ensure it is fully portable and does not rely on any Replit-only features, including subtle or indirect ones.
+
+⚠️ Important constraints:
+
+Do NOT refactor, rewrite, or change working code.
+
+This is an audit, verification, and documentation task only.
+
+If you find Replit-specific behavior, report it clearly instead of modifying code.
+
+1. Portability Audit (Final Pass)
+
+Check for anything that may have been missed previously, including but not limited to:
+
+Hidden or indirect Replit runtime APIs
+
+Replit-injected environment variables or defaults
+
+Replit filesystem or persistence assumptions
+
+Preview, hosting, port binding, or networking behavior specific to Replit
+
+Build, dev, or start scripts that behave differently outside Replit
+
+UI, assets, or metadata implicitly relying on Replit
+
+Auth, secrets, or config behavior that differs outside Replit
+
+Any behavior that would fail when:
+
+Pushed to GitHub
+
+Downloaded as a ZIP
+
+Edited in another editor or AI editor (e.g. Trae)
+
+Deployed on a standard Node.js environment or VPS
+
+For each issue found, provide:
+
+File and location (if applicable)
+
+Why it is Replit-specific
+
+Whether it breaks portability
+
+What the portable alternative should be (do not apply changes)
+
+2. Replit Terminology & Behavior Dictionary (For AI Agents)
+
+Create a clear reference / dictionary section explaining:
+
+Replit-specific names, processes, environment variables, files, or behaviors
+
+What each one does in plain language
+
+The standard, non-Replit equivalent (or confirmation that it was removed)
+
+This section must be written so other AI agents or editors can understand and work with the project without Replit context.
+
+3. Environment Variables & .env Setup Instructions
+
+Create a dedicated .env setup guide that includes:
+
+A list of all required environment variables
+
+For each variable:
+
+Variable name
+
+What it is used for
+
+Which feature/module depends on it
+
+Clear instruction such as:
+
+“Ask the project architect or human editor to provide this value”
+
+Example format:
+
+DATABASE_URL — PostgreSQL connection string (used by X module)
+
+SESSION_SECRET — Session encryption key (used by auth middleware)
+
+R2_ACCESS_KEY — Cloud storage credentials (used by upload service)
+
+4. Run, Build, and Deploy Instructions
+
+Create a clear runbook that explains:
+
+Required software (e.g. Node.js version, package manager)
+
+How to install dependencies
+
+How to build the project
+
+How to run the project in development
+
+How to run it in production
+
+Example:
+
+“Install Node.js vXX”
+
+“Run npm install”
+
+“Run npm run build”
+
+“Run npm start”
+
+Write this so a human or AI editor can run the app without guessing.
+
+5. Final Verification Statement
+
+End with a clear conclusion stating one and only one of the following:
+
+✅ “This project is fully portable and safe to export, edit, and deploy outside Replit.”
+OR
+
+⚠️ “The following items must be addressed before full portability is guaranteed” (with a checklist)
+
+Goal:
+100% confidence that this project can be:
+
+Pushed to GitHub
+
+Downloaded as a ZIP
+
+Edited in any IDE or AI editor
+
+Deployed without Replit
+
+Understood by other AI agents with no Replit context
+
+Do not modify code. Audit, document, and verify only."
