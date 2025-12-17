@@ -1,45 +1,50 @@
-import { useState, useCallback, useEffect } from "react";
-import { pointsApi, gameApi } from "../lib/api";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+interface PointsResponse {
+  points: number;
+}
 
 export function usePoints() {
-  const [points, setPoints] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchPoints = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await pointsApi.get();
-      setPoints(data.points);
-      setError(null);
-    } catch (err) {
-      setError("Failed to fetch points");
-      console.error("Error fetching points:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading, error } = useQuery<PointsResponse>({
+    queryKey: ['points'],
+    queryFn: async () => {
+      const response = await fetch('/api/points', {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch points');
+      }
+      return response.json();
+    },
+  });
 
-  const completeGame = useCallback(async (gameId: number, score: number) => {
-    try {
-      const result = await gameApi.complete(gameId, score);
-      setPoints(result.totalPoints);
-      return result;
-    } catch (err) {
-      console.error("Error completing game:", err);
-      throw err;
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPoints();
-  }, [fetchPoints]);
+  const addPointsMutation = useMutation({
+    mutationFn: async (points: number) => {
+      const response = await fetch('/api/points/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ points }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to add points');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['points'] });
+    },
+  });
 
   return {
-    points,
-    loading,
+    points: data?.points ?? 0,
+    isLoading,
     error,
-    refetch: fetchPoints,
-    completeGame,
+    addPoints: addPointsMutation.mutate,
+    isAddingPoints: addPointsMutation.isPending,
   };
 }

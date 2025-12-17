@@ -1,85 +1,56 @@
-import { useRef, useCallback, useEffect } from "react";
-import { activityApi } from "../lib/api";
+import { useEffect, useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "./useAuth";
 
-type ActivityType = "reading" | "watching" | "playing";
+type ActivityType = 'reading' | 'watching' | 'playing';
 
 export function useActivityTracker(activityType: ActivityType) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const startTimeRef = useRef<number | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const accumulatedSecondsRef = useRef(0);
 
-  const sendActivity = useCallback(async (seconds: number) => {
-    if (seconds <= 0) return;
-    try {
-      await activityApi.track(activityType, seconds);
-      console.log(`Tracked ${seconds}s of ${activityType}`);
-    } catch (error) {
-      console.error(`Failed to track ${activityType}:`, error);
-    }
-  }, [activityType]);
+  const trackMutation = useMutation({
+    mutationFn: async (seconds: number) => {
+      const response = await fetch('/api/activity/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ activityType, seconds }),
+      });
+      if (!response.ok) throw new Error('Failed to track activity');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/activity/today'] });
+    },
+  });
 
-  const startTracking = useCallback(() => {
-    if (startTimeRef.current !== null) return;
-    
+  useEffect(() => {
+    if (!user) return;
+
     startTimeRef.current = Date.now();
-    accumulatedSecondsRef.current = 0;
 
     intervalRef.current = setInterval(() => {
       if (startTimeRef.current) {
         const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        const toSend = elapsed - accumulatedSecondsRef.current;
-        if (toSend >= 30) {
-          sendActivity(toSend);
-          accumulatedSecondsRef.current = elapsed;
+        if (elapsed >= 30) {
+          trackMutation.mutate(elapsed);
+          startTimeRef.current = Date.now();
         }
       }
     }, 30000);
-  }, [sendActivity]);
 
-  const stopTracking = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    if (startTimeRef.current) {
-      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      const remaining = elapsed - accumulatedSecondsRef.current;
-      if (remaining > 0) {
-        sendActivity(remaining);
-      }
-      startTimeRef.current = null;
-      accumulatedSecondsRef.current = 0;
-    }
-  }, [sendActivity]);
-
-  const getElapsedSeconds = useCallback(() => {
-    if (!startTimeRef.current) return 0;
-    return Math.floor((Date.now() - startTimeRef.current) / 1000);
-  }, []);
-
-  useEffect(() => {
     return () => {
-      stopTracking();
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (startTimeRef.current && user) {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        if (elapsed >= 5) {
+          trackMutation.mutate(elapsed);
+        }
+      }
     };
-  }, [stopTracking]);
-
-  return {
-    startTracking,
-    stopTracking,
-    getElapsedSeconds,
-    isTracking: startTimeRef.current !== null,
-  };
-}
-
-export function useReadingTracker() {
-  return useActivityTracker("reading");
-}
-
-export function useGameTracker() {
-  return useActivityTracker("playing");
-}
-
-export function useVideoTracker() {
-  return useActivityTracker("watching");
+  }, [user, activityType]);
 }

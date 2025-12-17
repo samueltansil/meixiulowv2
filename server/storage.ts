@@ -1,148 +1,565 @@
-import { db } from "./db";
-import { eq, and, sql } from "drizzle-orm";
 import {
   users,
-  userDailyActivity,
-  userPointsLedger,
-  userGameCompletions,
+  videos,
+  subscriptions,
+  userActivity,
+  r2VideoMetadata,
+  stories,
   storyGames,
-} from "../shared/schema";
+  courseworkItems,
+  type User,
+  type UpsertUser,
+  type Video,
+  type InsertVideo,
+  type Subscription,
+  type InsertSubscription,
+  type UserActivity,
+  type R2VideoMetadata,
+  type InsertR2VideoMetadata,
+  type Story,
+  type InsertStory,
+  type StoryGame,
+  type InsertStoryGame,
+  type CourseworkItem,
+  type InsertCourseworkItem,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, sql, and } from "drizzle-orm";
 
-function getSingaporeDate(): string {
-  const now = new Date();
-  const sgOffset = 8 * 60;
-  const utcOffset = now.getTimezoneOffset();
-  const sgTime = new Date(now.getTime() + (sgOffset + utcOffset) * 60000);
-  return sgTime.toISOString().split("T")[0];
+export interface IStorage {
+  getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  updateUserSubscription(userId: string, isSubscribed: boolean, plan?: string): Promise<User>;
+  requestTeacherVerification(userId: string): Promise<User>;
+  updateTeacherVerificationStatus(userId: string, status: string): Promise<User>;
+  getPendingVerificationRequests(): Promise<User[]>;
+  getUserPoints(userId: string): Promise<number>;
+  addUserPoints(userId: string, points: number): Promise<User>;
+  
+  getAllVideos(): Promise<Video[]>;
+  getVideoById(id: number): Promise<Video | undefined>;
+  getFeaturedVideos(): Promise<Video[]>;
+  createVideo(video: InsertVideo): Promise<Video>;
+  updateVideo(id: number, video: Partial<InsertVideo>): Promise<Video>;
+  deleteVideo(id: number): Promise<void>;
+  incrementVideoViews(id: number): Promise<void>;
+  
+  createSubscription(subscription: InsertSubscription): Promise<Subscription>;
+  getUserSubscription(userId: string): Promise<Subscription | undefined>;
+  cancelSubscription(userId: string): Promise<void>;
+  
+  getTodayActivity(userId: string): Promise<UserActivity | undefined>;
+  addActivityTime(userId: string, activityType: 'reading' | 'watching' | 'playing', seconds: number): Promise<UserActivity>;
+  
+  getAllR2VideoMetadata(): Promise<R2VideoMetadata[]>;
+  getR2VideoMetadataByKey(r2Key: string): Promise<R2VideoMetadata | undefined>;
+  upsertR2VideoMetadata(data: InsertR2VideoMetadata): Promise<R2VideoMetadata>;
+  deleteR2VideoMetadata(r2Key: string): Promise<void>;
+  
+  getPublishedStories(): Promise<Story[]>;
+  getAllStories(): Promise<Story[]>;
+  getStoryById(id: number): Promise<Story | undefined>;
+  getStoryBySlug(slug: string): Promise<Story | undefined>;
+  getFeaturedStory(): Promise<Story | undefined>;
+  getFeaturedStories(): Promise<Story[]>;
+  createStory(story: InsertStory): Promise<Story>;
+  updateStory(id: number, story: Partial<InsertStory>): Promise<Story>;
+  deleteStory(id: number): Promise<void>;
+  
+  // Story Games
+  getGamesByStoryTitle(storyTitle: string): Promise<StoryGame[]>;
+  getGameById(id: number): Promise<StoryGame | undefined>;
+  getAllGames(): Promise<StoryGame[]>;
+  getActiveGames(): Promise<StoryGame[]>;
+  getFeaturedGames(): Promise<StoryGame[]>;
+  createGame(game: InsertStoryGame): Promise<StoryGame>;
+  updateGame(id: number, game: Partial<InsertStoryGame>): Promise<StoryGame>;
+  deleteGame(id: number): Promise<void>;
+  
+  // Coursework Marketplace
+  getAllCoursework(): Promise<CourseworkItem[]>;
+  getPublishedCoursework(): Promise<CourseworkItem[]>;
+  getCourseworkById(id: number): Promise<CourseworkItem | undefined>;
+  getCourseworkByTeacher(teacherId: string): Promise<CourseworkItem[]>;
+  createCoursework(item: InsertCourseworkItem): Promise<CourseworkItem>;
+  updateCoursework(id: number, item: Partial<InsertCourseworkItem>): Promise<CourseworkItem>;
+  deleteCoursework(id: number): Promise<void>;
+  
+  // Teacher Profile
+  getTeachers(): Promise<User[]>;
+  getTeacherById(id: string): Promise<User | undefined>;
+  updateUserRole(userId: string, role: string): Promise<User>;
+  updateTeacherProfile(userId: string, data: Partial<User>): Promise<User>;
+  
+  // User Profile & Settings
+  updateUserProfile(userId: string, data: { firstName?: string; lastName?: string }): Promise<User>;
+  updateUserPassword(userId: string, passwordHash: string): Promise<void>;
+  updateUserNotifications(userId: string, data: { marketingEmailsOptIn?: boolean; contentAlertsOptIn?: boolean; teacherUpdatesOptIn?: boolean }): Promise<User>;
 }
 
-export class Storage {
-  async getUser(userId: string) {
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUserSubscription(userId: string, isSubscribed: boolean, plan?: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        isSubscribed,
+        subscriptionPlan: plan,
+        subscriptionStartDate: isSubscribed ? new Date() : null,
+        subscriptionEndDate: isSubscribed ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
     return user;
   }
 
   async getUserPoints(userId: string): Promise<number> {
     const user = await this.getUser(userId);
-    return user?.totalPoints ?? 0;
+    return user?.points ?? 0;
   }
 
-  async addUserPoints(userId: string, points: number, sourceType: string, sourceId?: number) {
-    const currentPoints = await this.getUserPoints(userId);
-    const newBalance = currentPoints + points;
-
-    await db.update(users)
-      .set({ 
-        totalPoints: newBalance,
-        updatedAt: new Date()
+  async addUserPoints(userId: string, points: number): Promise<User> {
+    const existingUser = await this.getUser(userId);
+    
+    if (!existingUser) {
+      const [newUser] = await db
+        .insert(users)
+        .values({ id: userId, points })
+        .returning();
+      return newUser;
+    }
+    
+    const [user] = await db
+      .update(users)
+      .set({
+        points: sql`${users.points} + ${points}`,
+        updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
-
-    await db.insert(userPointsLedger).values({
-      userId,
-      pointsDelta: points,
-      sourceType,
-      sourceId: sourceId ?? null,
-      balanceAfter: newBalance,
-    });
-
-    return { totalPoints: newBalance, pointsAdded: points };
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 
-  async getTodayActivity(userId: string) {
-    const today = getSingaporeDate();
-    const [activity] = await db.select()
-      .from(userDailyActivity)
-      .where(and(
-        eq(userDailyActivity.userId, userId),
-        eq(userDailyActivity.activityDate, today)
-      ));
+  async getAllVideos(): Promise<Video[]> {
+    return await db.select().from(videos).orderBy(desc(videos.createdAt));
+  }
+
+  async getVideoById(id: number): Promise<Video | undefined> {
+    const [video] = await db.select().from(videos).where(eq(videos.id, id));
+    return video;
+  }
+
+  async getFeaturedVideos(): Promise<Video[]> {
+    return await db.select().from(videos).where(eq(videos.isFeatured, true)).orderBy(desc(videos.createdAt));
+  }
+
+  async createVideo(videoData: InsertVideo): Promise<Video> {
+    const [video] = await db.insert(videos).values(videoData).returning();
+    return video;
+  }
+
+  async updateVideo(id: number, videoData: Partial<InsertVideo>): Promise<Video> {
+    const [video] = await db
+      .update(videos)
+      .set(videoData)
+      .where(eq(videos.id, id))
+      .returning();
+    return video;
+  }
+
+  async deleteVideo(id: number): Promise<void> {
+    await db.delete(videos).where(eq(videos.id, id));
+  }
+
+  async incrementVideoViews(id: number): Promise<void> {
+    await db
+      .update(videos)
+      .set({ views: sql`${videos.views} + 1` })
+      .where(eq(videos.id, id));
+  }
+
+  async createSubscription(subscriptionData: InsertSubscription): Promise<Subscription> {
+    const [subscription] = await db.insert(subscriptions).values(subscriptionData).returning();
+    return subscription;
+  }
+
+  async getUserSubscription(userId: string): Promise<Subscription | undefined> {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, userId))
+      .orderBy(desc(subscriptions.createdAt))
+      .limit(1);
+    return subscription;
+  }
+
+  async cancelSubscription(userId: string): Promise<void> {
+    await db
+      .update(subscriptions)
+      .set({ status: 'cancelled', endDate: new Date() })
+      .where(eq(subscriptions.userId, userId));
+  }
+
+  async getTodayActivity(userId: string): Promise<UserActivity | undefined> {
+    const today = new Date().toISOString().split('T')[0];
+    const [activity] = await db
+      .select()
+      .from(userActivity)
+      .where(and(eq(userActivity.userId, userId), eq(userActivity.date, today)));
     return activity;
   }
 
-  async trackActivity(userId: string, activityType: "reading" | "watching" | "playing", seconds: number) {
-    const today = getSingaporeDate();
+  async addActivityTime(userId: string, activityType: 'reading' | 'watching' | 'playing', seconds: number): Promise<UserActivity> {
+    const today = new Date().toISOString().split('T')[0];
     const existing = await this.getTodayActivity(userId);
-
-    const columnMap = {
-      reading: "readingSeconds",
-      watching: "watchingSeconds",
-      playing: "playSeconds",
-    } as const;
-
-    const column = columnMap[activityType];
-
+    
     if (existing) {
-      const updateData: Record<string, any> = {
-        updatedAt: new Date(),
-      };
-      updateData[column] = sql`${userDailyActivity[column]} + ${seconds}`;
+      const updateData: Partial<UserActivity> = { updatedAt: new Date() };
+      if (activityType === 'reading') {
+        updateData.readingTimeSeconds = existing.readingTimeSeconds + seconds;
+      } else if (activityType === 'watching') {
+        updateData.watchingTimeSeconds = existing.watchingTimeSeconds + seconds;
+      } else {
+        updateData.playingTimeSeconds = existing.playingTimeSeconds + seconds;
+      }
       
-      await db.update(userDailyActivity)
+      const [updated] = await db
+        .update(userActivity)
         .set(updateData)
-        .where(eq(userDailyActivity.id, existing.id));
-
-      const [updated] = await db.select()
-        .from(userDailyActivity)
-        .where(eq(userDailyActivity.id, existing.id));
+        .where(eq(userActivity.id, existing.id))
+        .returning();
       return updated;
     } else {
-      const insertData: Record<string, any> = {
+      const insertData: any = {
         userId,
-        activityDate: today,
-        readingSeconds: 0,
-        watchingSeconds: 0,
-        playSeconds: 0,
+        date: today,
+        readingTimeSeconds: activityType === 'reading' ? seconds : 0,
+        watchingTimeSeconds: activityType === 'watching' ? seconds : 0,
+        playingTimeSeconds: activityType === 'playing' ? seconds : 0,
       };
-      insertData[column] = seconds;
-
-      const [newActivity] = await db.insert(userDailyActivity)
-        .values(insertData as any)
+      
+      const [created] = await db
+        .insert(userActivity)
+        .values(insertData)
         .returning();
-      return newActivity;
+      return created;
     }
   }
 
-  async completeGame(userId: string, gameId: number, score: number) {
-    const [game] = await db.select().from(storyGames).where(eq(storyGames.id, gameId));
-    if (!game) {
-      throw new Error("Game not found");
-    }
-
-    const pointsReward = game.pointsReward ?? 10;
-    const pointsAwarded = Math.round((score / 100) * pointsReward);
-
-    await db.insert(userGameCompletions).values({
-      userId,
-      gameId,
-      score,
-      pointsAwarded,
-    });
-
-    const result = await this.addUserPoints(userId, pointsAwarded, "game_completion", gameId);
-
-    return {
-      pointsAwarded,
-      totalPoints: result.totalPoints,
-      score,
-    };
+  async getAllR2VideoMetadata(): Promise<R2VideoMetadata[]> {
+    return await db.select().from(r2VideoMetadata).orderBy(desc(r2VideoMetadata.createdAt));
   }
 
-  async getPointsHistory(userId: string, limit = 20) {
-    return db.select()
-      .from(userPointsLedger)
-      .where(eq(userPointsLedger.userId, userId))
-      .orderBy(sql`${userPointsLedger.createdAt} DESC`)
-      .limit(limit);
+  async getR2VideoMetadataByKey(r2Key: string): Promise<R2VideoMetadata | undefined> {
+    const [metadata] = await db.select().from(r2VideoMetadata).where(eq(r2VideoMetadata.r2Key, r2Key));
+    return metadata;
   }
 
-  async getActivityHistory(userId: string, days = 7) {
-    return db.select()
-      .from(userDailyActivity)
-      .where(eq(userDailyActivity.userId, userId))
-      .orderBy(sql`${userDailyActivity.activityDate} DESC`)
-      .limit(days);
+  async upsertR2VideoMetadata(data: InsertR2VideoMetadata): Promise<R2VideoMetadata> {
+    const [metadata] = await db
+      .insert(r2VideoMetadata)
+      .values(data)
+      .onConflictDoUpdate({
+        target: r2VideoMetadata.r2Key,
+        set: {
+          title: data.title,
+          description: data.description,
+          category: data.category,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return metadata;
+  }
+
+  async deleteR2VideoMetadata(r2Key: string): Promise<void> {
+    await db.delete(r2VideoMetadata).where(eq(r2VideoMetadata.r2Key, r2Key));
+  }
+
+  async getPublishedStories(): Promise<Story[]> {
+    return await db
+      .select()
+      .from(stories)
+      .where(eq(stories.isPublished, true))
+      .orderBy(desc(stories.publishedAt));
+  }
+
+  async getAllStories(): Promise<Story[]> {
+    return await db.select().from(stories).orderBy(desc(stories.createdAt));
+  }
+
+  async getStoryById(id: number): Promise<Story | undefined> {
+    const [story] = await db.select().from(stories).where(eq(stories.id, id));
+    return story;
+  }
+
+  async getStoryBySlug(slug: string): Promise<Story | undefined> {
+    const [story] = await db.select().from(stories).where(eq(stories.slug, slug));
+    return story;
+  }
+
+  async getFeaturedStory(): Promise<Story | undefined> {
+    const [story] = await db
+      .select()
+      .from(stories)
+      .where(and(eq(stories.isPublished, true), eq(stories.isFeatured, true)))
+      .orderBy(desc(stories.publishedAt))
+      .limit(1);
+    return story;
+  }
+
+  async getFeaturedStories(): Promise<Story[]> {
+    return await db
+      .select()
+      .from(stories)
+      .where(and(eq(stories.isPublished, true), eq(stories.isFeatured, true)))
+      .orderBy(desc(stories.publishedAt));
+  }
+
+  async createStory(storyData: InsertStory): Promise<Story> {
+    const [story] = await db.insert(stories).values(storyData).returning();
+    return story;
+  }
+
+  async updateStory(id: number, storyData: Partial<InsertStory>): Promise<Story> {
+    const [story] = await db
+      .update(stories)
+      .set({ ...storyData, updatedAt: new Date() })
+      .where(eq(stories.id, id))
+      .returning();
+    return story;
+  }
+
+  async deleteStory(id: number): Promise<void> {
+    await db.delete(stories).where(eq(stories.id, id));
+  }
+
+  // Story Games
+  async getGamesByStoryTitle(storyTitle: string): Promise<StoryGame[]> {
+    return await db
+      .select()
+      .from(storyGames)
+      .where(eq(storyGames.linkedStoryTitle, storyTitle))
+      .orderBy(desc(storyGames.createdAt));
+  }
+
+  async getGameById(id: number): Promise<StoryGame | undefined> {
+    const [game] = await db.select().from(storyGames).where(eq(storyGames.id, id));
+    return game;
+  }
+
+  async getAllGames(): Promise<StoryGame[]> {
+    return await db.select().from(storyGames).orderBy(desc(storyGames.createdAt));
+  }
+
+  async getActiveGames(): Promise<StoryGame[]> {
+    return await db
+      .select()
+      .from(storyGames)
+      .where(eq(storyGames.isActive, true))
+      .orderBy(desc(storyGames.createdAt));
+  }
+
+  async getFeaturedGames(): Promise<StoryGame[]> {
+    return await db
+      .select()
+      .from(storyGames)
+      .where(and(eq(storyGames.isActive, true), eq(storyGames.isFeatured, true)))
+      .orderBy(desc(storyGames.createdAt));
+  }
+
+  async createGame(gameData: InsertStoryGame): Promise<StoryGame> {
+    const [game] = await db.insert(storyGames).values(gameData).returning();
+    return game;
+  }
+
+  async updateGame(id: number, gameData: Partial<InsertStoryGame>): Promise<StoryGame> {
+    const [game] = await db
+      .update(storyGames)
+      .set({ ...gameData, updatedAt: new Date() })
+      .where(eq(storyGames.id, id))
+      .returning();
+    return game;
+  }
+
+  async deleteGame(id: number): Promise<void> {
+    await db.delete(storyGames).where(eq(storyGames.id, id));
+  }
+
+  // Coursework Marketplace
+  async getAllCoursework(): Promise<CourseworkItem[]> {
+    return await db.select().from(courseworkItems).orderBy(desc(courseworkItems.createdAt));
+  }
+
+  async getPublishedCoursework(): Promise<CourseworkItem[]> {
+    return await db
+      .select()
+      .from(courseworkItems)
+      .where(eq(courseworkItems.isPublished, true))
+      .orderBy(desc(courseworkItems.createdAt));
+  }
+
+  async getCourseworkById(id: number): Promise<CourseworkItem | undefined> {
+    const [item] = await db.select().from(courseworkItems).where(eq(courseworkItems.id, id));
+    return item;
+  }
+
+  async getCourseworkByTeacher(teacherId: string): Promise<CourseworkItem[]> {
+    return await db
+      .select()
+      .from(courseworkItems)
+      .where(eq(courseworkItems.teacherId, teacherId))
+      .orderBy(desc(courseworkItems.createdAt));
+  }
+
+  async createCoursework(item: InsertCourseworkItem): Promise<CourseworkItem> {
+    const [coursework] = await db.insert(courseworkItems).values(item).returning();
+    return coursework;
+  }
+
+  async updateCoursework(id: number, item: Partial<InsertCourseworkItem>): Promise<CourseworkItem> {
+    const [coursework] = await db
+      .update(courseworkItems)
+      .set({ ...item, updatedAt: new Date() })
+      .where(eq(courseworkItems.id, id))
+      .returning();
+    return coursework;
+  }
+
+  async deleteCoursework(id: number): Promise<void> {
+    await db.delete(courseworkItems).where(eq(courseworkItems.id, id));
+  }
+
+  // Teacher Profile
+  async getTeachers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.userRole, 'teacher'))
+      .orderBy(desc(users.totalSales));
+  }
+
+  async getTeacherById(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(and(eq(users.id, id), eq(users.userRole, 'teacher')));
+    return user;
+  }
+
+  async updateUserRole(userId: string, role: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ userRole: role, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async requestTeacherVerification(userId: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        teacherVerificationStatus: 'pending', 
+        verificationRequestedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateTeacherVerificationStatus(userId: string, status: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        teacherVerificationStatus: status,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async getPendingVerificationRequests(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.userRole, 'teacher'),
+        eq(users.teacherVerificationStatus, 'pending')
+      ))
+      .orderBy(desc(users.verificationRequestedAt));
+  }
+
+  async updateTeacherProfile(userId: string, data: Partial<User>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserProfile(userId: string, data: { firstName?: string; lastName?: string }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        firstName: data.firstName,
+        lastName: data.lastName,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        passwordHash,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateUserNotifications(userId: string, data: { marketingEmailsOptIn?: boolean; contentAlertsOptIn?: boolean; teacherUpdatesOptIn?: boolean }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        marketingEmailsOptIn: data.marketingEmailsOptIn,
+        contentAlertsOptIn: data.contentAlertsOptIn,
+        teacherUpdatesOptIn: data.teacherUpdatesOptIn,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 }
 
-export const storage = new Storage();
+export const storage = new DatabaseStorage();

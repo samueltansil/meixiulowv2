@@ -1,53 +1,479 @@
-import { Express, Request, Response, NextFunction } from "express";
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { randomBytes } from "crypto";
+import bcrypt from "bcrypt";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import { insertVideoSchema, updateVideoSchema, insertStorySchema, updateStorySchema, insertStoryGameSchema, updateStoryGameSchema, insertCourseworkItemSchema, updateCourseworkItemSchema, type InsertVideo, type InsertStory, type InsertStoryGame, type InsertCourseworkItem } from "@shared/schema";
+import { z } from "zod";
+import { fromZodError } from "zod-validation-error";
+import { listVideos, getVideoSignedUrl, getImageUploadUrl, getImageSignedUrl, uploadImageToR2 } from "./r2";
+import multer from "multer";
 
-function getUserId(req: Request): string | null {
-  const user = (req as any).user;
-  if (user?.claims?.sub) return user.claims.sub;
-  if (user?.id) return user.id;
-  if ((req.session as any)?.passport?.user) return (req.session as any).passport.user;
+const BCRYPT_ROUNDS = 12;
+
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"; // "Bella" - friendly female voice
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+let timestampsEndpointAvailable = true;
+let timestampsLastChecked = 0;
+const TIMESTAMPS_RETRY_INTERVAL = 5 * 60 * 1000; // Retry timestamps endpoint every 5 minutes
+
+const adminSessions = new Map<string, { expiresAt: number }>();
+const ADMIN_SESSION_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+
+function generateAdminToken(): string {
+  return randomBytes(32).toString('hex');
+}
+
+function isValidAdminSession(req: any): boolean {
+  const token = req.headers['x-admin-token'] || req.cookies?.adminToken;
+  if (!token) return false;
+  
+  const session = adminSessions.get(token);
+  if (!session) return false;
+  
+  if (Date.now() > session.expiresAt) {
+    adminSessions.delete(token);
+    return false;
+  }
+  
+  return true;
+}
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  },
+});
+
+// Combined auth check that supports both Replit Auth and email/password auth
+function getUserIdFromRequest(req: any): string | null {
+  // Check email/password session first
+  if (req.session?.userId) {
+    return req.session.userId;
+  }
+  // Then check Replit Auth
+  if (req.user?.claims?.sub) {
+    return req.user.claims.sub;
+  }
   return null;
 }
 
-function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ message: "Not authenticated" });
-  }
-  (req as any).userId = userId;
-  next();
-}
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express
+): Promise<Server> {
+  await setupAuth(app);
 
-export function registerActivityRoutes(app: Express) {
-  app.get("/api/activity/today", isAuthenticated, async (req, res) => {
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req as any).userId;
-      const activity = await storage.getTodayActivity(userId);
-      res.json(activity || { 
-        readingSeconds: 0, 
-        watchingSeconds: 0, 
-        playSeconds: 0 
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.post('/api/admin/login', async (req: any, res) => {
+    try {
+      const { password } = req.body;
+      if (!password) {
+        return res.status(400).json({ message: "Password is required" });
+      }
+      if (password === ADMIN_PASSWORD) {
+        const token = generateAdminToken();
+        adminSessions.set(token, { expiresAt: Date.now() + ADMIN_SESSION_EXPIRY });
+        return res.json({ success: true, token });
+      }
+      return res.status(401).json({ message: "Invalid password" });
+    } catch (error) {
+      console.error("Error in admin login:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  app.get('/api/admin/session', async (req: any, res) => {
+    if (isValidAdminSession(req)) {
+      return res.json({ valid: true });
+    }
+    return res.status(401).json({ valid: false, message: "Session expired or invalid" });
+  });
+
+  // Admin: Get pending teacher verification requests
+  app.get('/api/admin/teacher-verifications', async (req: any, res) => {
+    if (!isValidAdminSession(req)) {
+      return res.status(401).json({ message: "Admin authentication required" });
+    }
+    try {
+      const pendingTeachers = await storage.getPendingVerificationRequests();
+      res.json(pendingTeachers.map(t => ({ ...t, passwordHash: undefined })));
+    } catch (error) {
+      console.error("Error fetching pending verifications:", error);
+      res.status(500).json({ message: "Failed to fetch pending verifications" });
+    }
+  });
+
+  // Admin: Approve or reject teacher verification
+  app.post('/api/admin/teacher-verifications/:userId', async (req: any, res) => {
+    if (!isValidAdminSession(req)) {
+      return res.status(401).json({ message: "Admin authentication required" });
+    }
+    try {
+      const { userId } = req.params;
+      const { action } = req.body;
+      
+      if (!action || !['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ message: "Action must be 'approve' or 'reject'" });
+      }
+      
+      const status = action === 'approve' ? 'verified' : 'rejected';
+      const user = await storage.updateTeacherVerificationStatus(userId, status);
+      res.json({ success: true, user: { ...user, passwordHash: undefined } });
+    } catch (error) {
+      console.error("Error updating verification status:", error);
+      res.status(500).json({ message: "Failed to update verification status" });
+    }
+  });
+
+  // Email/Password Auth Endpoints
+  app.post('/api/auth/register', async (req: any, res) => {
+    try {
+      const { email, password, confirmPassword, firstName, lastName, agreedToTerms } = req.body;
+      
+      if (!email || !password || !confirmPassword) {
+        return res.status(400).json({ message: "Email, password, and password confirmation are required" });
+      }
+      
+      if (password !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match" });
+      }
+      
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long" });
+      }
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
+      }
+      
+      if (!agreedToTerms) {
+        return res.status(400).json({ message: "You must agree to the Terms of Service and Privacy Policy" });
+      }
+      
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "An account with this email already exists" });
+      }
+      
+      const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+      
+      const user = await storage.upsertUser({
+        email: email.toLowerCase(),
+        passwordHash,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        userRole: null,
+        agreedToTerms: true,
+        agreedToTermsAt: new Date(),
       });
+      
+      req.session.userId = user.id;
+      req.session.authType = 'email';
+      
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Error saving session:", err);
+          return res.status(500).json({ message: "Registration failed" });
+        }
+        res.status(201).json({ 
+          success: true, 
+          user: { ...user, passwordHash: undefined },
+          needsRoleSelection: !user.userRole
+        });
+      });
+    } catch (error) {
+      console.error("Error registering user:", error);
+      res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  app.post('/api/auth/login', async (req: any, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+      
+      const user = await storage.getUserByEmail(email.toLowerCase());
+      if (!user || !user.passwordHash) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      const validPassword = await bcrypt.compare(password, user.passwordHash);
+      if (!validPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      req.session.userId = user.id;
+      req.session.authType = 'email';
+      
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Error saving session:", err);
+          return res.status(500).json({ message: "Login failed" });
+        }
+        res.json({ 
+          success: true, 
+          user: { ...user, passwordHash: undefined },
+          needsRoleSelection: !user.userRole
+        });
+      });
+    } catch (error) {
+      console.error("Error logging in:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  app.post('/api/auth/logout', async (req: any, res) => {
+    try {
+      req.session.destroy((err: any) => {
+        if (err) {
+          console.error("Error destroying session:", err);
+          return res.status(500).json({ message: "Logout failed" });
+        }
+        res.clearCookie('connect.sid');
+        res.json({ success: true });
+      });
+    } catch (error) {
+      console.error("Error logging out:", error);
+      res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
+  app.patch('/api/auth/role', async (req: any, res) => {
+    try {
+      const userId = getUserIdFromRequest(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const { role } = req.body;
+      if (!role || !['teacher', 'student'].includes(role)) {
+        return res.status(400).json({ message: "Role must be 'teacher' or 'student'" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (user.userRole) {
+        return res.status(400).json({ message: "Role has already been set" });
+      }
+      
+      const updatedUser = await storage.updateUserRole(userId, role);
+      res.json({ 
+        success: true, 
+        user: { ...updatedUser, passwordHash: undefined }
+      });
+    } catch (error) {
+      console.error("Error setting role:", error);
+      res.status(500).json({ message: "Failed to set role" });
+    }
+  });
+
+  app.post('/api/auth/request-verification', async (req: any, res) => {
+    try {
+      const userId = getUserIdFromRequest(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (user.userRole !== 'teacher') {
+        return res.status(400).json({ message: "Only teachers can request verification" });
+      }
+      
+      if (user.teacherVerificationStatus === 'verified') {
+        return res.status(400).json({ message: "You are already verified" });
+      }
+      
+      const updatedUser = await storage.requestTeacherVerification(userId);
+      res.json({ 
+        success: true, 
+        user: { ...updatedUser, passwordHash: undefined },
+        message: "Verification request submitted. Our team will review your profile."
+      });
+    } catch (error) {
+      console.error("Error requesting verification:", error);
+      res.status(500).json({ message: "Failed to request verification" });
+    }
+  });
+
+  app.get('/api/auth/me', async (req: any, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({ ...user, passwordHash: undefined });
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.get('/api/videos', async (req, res) => {
+    try {
+      const videos = await storage.getAllVideos();
+      res.json(videos);
+    } catch (error) {
+      console.error("Error fetching videos:", error);
+      res.status(500).json({ message: "Failed to fetch videos" });
+    }
+  });
+
+  app.get('/api/videos/featured', async (req, res) => {
+    try {
+      const videos = await storage.getFeaturedVideos();
+      res.json(videos);
+    } catch (error) {
+      console.error("Error fetching featured videos:", error);
+      res.status(500).json({ message: "Failed to fetch featured videos" });
+    }
+  });
+
+  app.get('/api/videos/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const video = await storage.getVideoById(id);
+      if (!video) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+      await storage.incrementVideoViews(id);
+      res.json(video);
+    } catch (error) {
+      console.error("Error fetching video:", error);
+      res.status(500).json({ message: "Failed to fetch video" });
+    }
+  });
+
+  app.post('/api/videos', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = insertVideoSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: fromZodError(result.error).message 
+        });
+      }
+
+      const userId = req.user.claims.sub;
+      const videoData = result.data as z.infer<typeof insertVideoSchema>;
+      const video = await storage.createVideo({
+        ...videoData,
+        uploadedBy: userId,
+      });
+      res.status(201).json(video);
+    } catch (error) {
+      console.error("Error creating video:", error);
+      res.status(500).json({ message: "Failed to create video" });
+    }
+  });
+
+  app.post('/api/subscribe', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { plan } = req.body;
+
+      if (!plan || !['basic', 'premium', 'family'].includes(plan)) {
+        return res.status(400).json({ message: "Invalid subscription plan" });
+      }
+
+      const subscription = await storage.createSubscription({
+        userId,
+        plan,
+        status: 'active',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      });
+
+      const updatedUser = await storage.updateUserSubscription(userId, true, plan);
+
+      res.json({ subscription, user: updatedUser });
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  app.delete('/api/subscribe', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.cancelSubscription(userId);
+      const updatedUser = await storage.updateUserSubscription(userId, false);
+      res.json({ user: updatedUser });
+    } catch (error) {
+      console.error("Error canceling subscription:", error);
+      res.status(500).json({ message: "Failed to cancel subscription" });
+    }
+  });
+
+  app.get('/api/subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const subscription = await storage.getUserSubscription(userId);
+      res.json(subscription || null);
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      res.status(500).json({ message: "Failed to fetch subscription" });
+    }
+  });
+
+  app.get('/api/activity/today', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const activity = await storage.getTodayActivity(userId);
+      res.json(activity || { readingTimeSeconds: 0, watchingTimeSeconds: 0, playingTimeSeconds: 0 });
     } catch (error) {
       console.error("Error fetching activity:", error);
       res.status(500).json({ message: "Failed to fetch activity" });
     }
   });
 
-  app.post("/api/activity/track", isAuthenticated, async (req, res) => {
+  app.post('/api/activity/track', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req as any).userId;
+      const userId = req.user.claims.sub;
       const { activityType, seconds } = req.body;
-
-      if (!["reading", "watching", "playing"].includes(activityType)) {
+      
+      if (!['reading', 'watching', 'playing'].includes(activityType)) {
         return res.status(400).json({ message: "Invalid activity type" });
       }
-
-      if (typeof seconds !== "number" || seconds <= 0) {
+      if (typeof seconds !== 'number' || seconds < 0) {
         return res.status(400).json({ message: "Invalid seconds value" });
       }
-
-      const activity = await storage.trackActivity(userId, activityType, Math.round(seconds));
+      
+      const activity = await storage.addActivityTime(userId, activityType, seconds);
       res.json(activity);
     } catch (error) {
       console.error("Error tracking activity:", error);
@@ -55,21 +481,9 @@ export function registerActivityRoutes(app: Express) {
     }
   });
 
-  app.get("/api/activity/history", isAuthenticated, async (req, res) => {
+  app.get('/api/points', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req as any).userId;
-      const days = parseInt(req.query.days as string) || 7;
-      const history = await storage.getActivityHistory(userId, days);
-      res.json(history);
-    } catch (error) {
-      console.error("Error fetching activity history:", error);
-      res.status(500).json({ message: "Failed to fetch activity history" });
-    }
-  });
-
-  app.get("/api/points", isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req as any).userId;
+      const userId = req.user.claims.sub;
       const points = await storage.getUserPoints(userId);
       res.json({ points });
     } catch (error) {
@@ -78,38 +492,927 @@ export function registerActivityRoutes(app: Express) {
     }
   });
 
-  app.get("/api/points/history", isAuthenticated, async (req, res) => {
+  app.post('/api/points/add', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req as any).userId;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const history = await storage.getPointsHistory(userId, limit);
-      res.json(history);
+      const userId = req.user.claims.sub;
+      const { points } = req.body;
+      
+      if (typeof points !== 'number' || points <= 0) {
+        return res.status(400).json({ message: "Invalid points value" });
+      }
+      
+      const user = await storage.addUserPoints(userId, points);
+      res.json({ points: user.points });
     } catch (error) {
-      console.error("Error fetching points history:", error);
-      res.status(500).json({ message: "Failed to fetch points history" });
+      console.error("Error adding points:", error);
+      res.status(500).json({ message: "Failed to add points" });
     }
   });
 
-  app.post("/api/games/:id/complete", isAuthenticated, async (req, res) => {
+  app.get('/api/r2/videos', isAuthenticated, async (req, res) => {
     try {
-      const userId = (req as any).userId;
-      const gameId = parseInt(req.params.id);
-      const { score } = req.body;
+      const videos = await listVideos();
+      res.json(videos);
+    } catch (error) {
+      console.error("Error listing R2 videos:", error);
+      res.status(500).json({ message: "Failed to list videos from storage" });
+    }
+  });
 
-      if (typeof score !== "number" || score < 0 || score > 100) {
-        return res.status(400).json({ message: "Invalid score" });
+  app.get('/api/r2/videos/:key(*)', isAuthenticated, async (req, res) => {
+    try {
+      const key = req.params.key;
+      if (!key) {
+        return res.status(400).json({ message: "Video key is required" });
+      }
+      const signedUrl = await getVideoSignedUrl(key);
+      res.json({ url: signedUrl });
+    } catch (error) {
+      console.error("Error getting video URL:", error);
+      res.status(500).json({ message: "Failed to get video URL" });
+    }
+  });
+
+  app.get('/api/r2/metadata', isAuthenticated, async (req, res) => {
+    try {
+      const metadata = await storage.getAllR2VideoMetadata();
+      res.json(metadata);
+    } catch (error) {
+      console.error("Error fetching R2 metadata:", error);
+      res.status(500).json({ message: "Failed to fetch video metadata" });
+    }
+  });
+
+  app.get('/api/r2/metadata/:key(*)', isAuthenticated, async (req, res) => {
+    try {
+      const key = req.params.key;
+      const metadata = await storage.getR2VideoMetadataByKey(key);
+      res.json(metadata || null);
+    } catch (error) {
+      console.error("Error fetching R2 metadata:", error);
+      res.status(500).json({ message: "Failed to fetch video metadata" });
+    }
+  });
+
+  app.post('/api/r2/metadata', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { r2Key, title, description, category } = req.body;
+      
+      if (!r2Key || !title || !category) {
+        return res.status(400).json({ message: "r2Key, title, and category are required" });
+      }
+      
+      const metadata = await storage.upsertR2VideoMetadata({
+        r2Key,
+        title,
+        description: description || null,
+        category,
+      });
+      res.json(metadata);
+    } catch (error) {
+      console.error("Error saving R2 metadata:", error);
+      res.status(500).json({ message: "Failed to save video metadata" });
+    }
+  });
+
+  app.delete('/api/r2/metadata/:key(*)', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const key = req.params.key;
+      await storage.deleteR2VideoMetadata(key);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting R2 metadata:", error);
+      res.status(500).json({ message: "Failed to delete video metadata" });
+    }
+  });
+
+  // Story routes - public
+  app.get('/api/stories', async (req, res) => {
+    try {
+      const stories = await storage.getPublishedStories();
+      res.json(stories);
+    } catch (error) {
+      console.error("Error fetching stories:", error);
+      res.status(500).json({ message: "Failed to fetch stories" });
+    }
+  });
+
+  app.get('/api/stories/featured', async (req, res) => {
+    try {
+      const stories = await storage.getFeaturedStories();
+      res.json(stories);
+    } catch (error) {
+      console.error("Error fetching featured stories:", error);
+      res.status(500).json({ message: "Failed to fetch featured stories" });
+    }
+  });
+
+  app.get('/api/stories/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        const story = await storage.getStoryBySlug(req.params.id);
+        if (!story) {
+          return res.status(404).json({ message: "Story not found" });
+        }
+        return res.json(story);
+      }
+      const story = await storage.getStoryById(id);
+      if (!story) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+      res.json(story);
+    } catch (error) {
+      console.error("Error fetching story:", error);
+      res.status(500).json({ message: "Failed to fetch story" });
+    }
+  });
+
+  // Image upload for story thumbnails - admin only (server-side upload to avoid CORS)
+  app.post('/api/admin/upload/image', upload.single('image'), async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
       }
 
-      const result = await storage.completeGame(userId, gameId, score);
-      res.json({
-        pointsEarned: result.pointsAwarded,
-        totalPoints: result.totalPoints,
-        score: result.score,
-        message: `You earned ${result.pointsAwarded} points!`,
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      const { key } = await uploadImageToR2(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+      
+      const imageUrl = `/api/images/${key}`;
+      res.json({ imageUrl, key });
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
+  app.get('/api/images/:key(*)', async (req, res) => {
+    try {
+      const key = req.params.key;
+      if (!key.startsWith('story-thumbnails/')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      const signedUrl = await getImageSignedUrl(key);
+      res.redirect(signedUrl);
+    } catch (error) {
+      console.error("Error fetching image:", error);
+      res.status(500).json({ message: "Failed to fetch image" });
+    }
+  });
+
+  // Story routes - admin only
+  app.get('/api/admin/stories', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const stories = await storage.getAllStories();
+      res.json(stories);
+    } catch (error) {
+      console.error("Error fetching admin stories:", error);
+      res.status(500).json({ message: "Failed to fetch stories" });
+    }
+  });
+
+  app.post('/api/admin/stories', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const result = insertStorySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const storyData = result.data as z.infer<typeof insertStorySchema>;
+      const story = await storage.createStory({
+        ...storyData,
+        authorId: null,
+        publishedAt: storyData.isPublished ? new Date() : null,
+      });
+      res.status(201).json(story);
+    } catch (error) {
+      console.error("Error creating story:", error);
+      res.status(500).json({ message: "Failed to create story" });
+    }
+  });
+
+  app.put('/api/admin/stories/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const id = parseInt(req.params.id);
+      const existing = await storage.getStoryById(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+
+      const result = updateStorySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const storyUpdateData = result.data as z.infer<typeof updateStorySchema>;
+      const updateData: z.infer<typeof updateStorySchema> & { publishedAt?: Date } = { ...storyUpdateData };
+      if (storyUpdateData.isPublished && !existing.isPublished) {
+        updateData.publishedAt = new Date();
+      }
+
+      const story = await storage.updateStory(id, updateData);
+      res.json(story);
+    } catch (error) {
+      console.error("Error updating story:", error);
+      res.status(500).json({ message: "Failed to update story" });
+    }
+  });
+
+  app.delete('/api/admin/stories/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const id = parseInt(req.params.id);
+      await storage.deleteStory(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting story:", error);
+      res.status(500).json({ message: "Failed to delete story" });
+    }
+  });
+
+  // Admin Video Routes
+  app.get('/api/admin/videos', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const videos = await storage.getAllVideos();
+      res.json(videos);
+    } catch (error) {
+      console.error("Error fetching admin videos:", error);
+      res.status(500).json({ message: "Failed to fetch videos" });
+    }
+  });
+
+  app.post('/api/admin/videos', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const result = insertVideoSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const videoData = result.data as z.infer<typeof insertVideoSchema>;
+      const video = await storage.createVideo({
+        ...videoData,
+        uploadedBy: null,
+      });
+      res.status(201).json(video);
+    } catch (error) {
+      console.error("Error creating video:", error);
+      res.status(500).json({ message: "Failed to create video" });
+    }
+  });
+
+  app.put('/api/admin/videos/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const id = parseInt(req.params.id);
+      const existing = await storage.getVideoById(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+
+      const result = updateVideoSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const videoUpdateData = result.data as z.infer<typeof updateVideoSchema>;
+      const video = await storage.updateVideo(id, videoUpdateData);
+      res.json(video);
+    } catch (error) {
+      console.error("Error updating video:", error);
+      res.status(500).json({ message: "Failed to update video" });
+    }
+  });
+
+  app.delete('/api/admin/videos/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const id = parseInt(req.params.id);
+      await storage.deleteVideo(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      res.status(500).json({ message: "Failed to delete video" });
+    }
+  });
+
+  // Admin Game Routes
+  app.get('/api/games', async (req, res) => {
+    try {
+      const games = await storage.getActiveGames();
+      res.json(games);
+    } catch (error) {
+      console.error("Error fetching games:", error);
+      res.status(500).json({ message: "Failed to fetch games" });
+    }
+  });
+
+  app.get('/api/games/featured', async (req, res) => {
+    try {
+      const games = await storage.getFeaturedGames();
+      res.json(games);
+    } catch (error) {
+      console.error("Error fetching featured games:", error);
+      res.status(500).json({ message: "Failed to fetch featured games" });
+    }
+  });
+
+  app.get('/api/games/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const game = await storage.getGameById(id);
+      if (!game) {
+        return res.status(404).json({ message: "Game not found" });
+      }
+      res.json(game);
+    } catch (error) {
+      console.error("Error fetching game:", error);
+      res.status(500).json({ message: "Failed to fetch game" });
+    }
+  });
+
+  app.get('/api/games/by-story/:storyTitle', async (req, res) => {
+    try {
+      const storyTitle = decodeURIComponent(req.params.storyTitle);
+      const games = await storage.getGamesByStoryTitle(storyTitle);
+      res.json(games);
+    } catch (error) {
+      console.error("Error fetching games by story:", error);
+      res.status(500).json({ message: "Failed to fetch games" });
+    }
+  });
+
+  app.get('/api/admin/games', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const games = await storage.getAllGames();
+      res.json(games);
+    } catch (error) {
+      console.error("Error fetching games:", error);
+      res.status(500).json({ message: "Failed to fetch games" });
+    }
+  });
+
+  app.post('/api/admin/games', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const result = insertStoryGameSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const gameData = result.data as z.infer<typeof insertStoryGameSchema>;
+      const game = await storage.createGame(gameData);
+      res.status(201).json(game);
+    } catch (error) {
+      console.error("Error creating game:", error);
+      res.status(500).json({ message: "Failed to create game" });
+    }
+  });
+
+  app.put('/api/admin/games/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const id = parseInt(req.params.id);
+      const existing = await storage.getGameById(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Game not found" });
+      }
+
+      const result = updateStoryGameSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const gameData = result.data as z.infer<typeof updateStoryGameSchema>;
+      const game = await storage.updateGame(id, gameData);
+      res.json(game);
+    } catch (error) {
+      console.error("Error updating game:", error);
+      res.status(500).json({ message: "Failed to update game" });
+    }
+  });
+
+  app.delete('/api/admin/games/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const id = parseInt(req.params.id);
+      await storage.deleteGame(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting game:", error);
+      res.status(500).json({ message: "Failed to delete game" });
+    }
+  });
+
+  // Points API for games
+  app.post('/api/games/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const gameId = parseInt(req.params.id);
+      const { score } = req.body;
+      const userId = req.user.claims.sub;
+
+      const game = await storage.getGameById(gameId);
+      if (!game) {
+        return res.status(404).json({ message: "Game not found" });
+      }
+
+      const pointsEarned = Math.round((score / 100) * game.pointsReward);
+      const user = await storage.addUserPoints(userId, pointsEarned);
+
+      res.json({ 
+        pointsEarned, 
+        totalPoints: user.points,
+        message: `You earned ${pointsEarned} points!`
       });
     } catch (error) {
       console.error("Error completing game:", error);
-      res.status(500).json({ message: "Failed to complete game" });
+      res.status(500).json({ message: "Failed to record game completion" });
     }
   });
+
+  app.post('/api/text-to-speech', async (req, res) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({ message: "Text is required" });
+      }
+
+      if (!ELEVENLABS_API_KEY) {
+        return res.status(500).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const shouldTryTimestamps = timestampsEndpointAvailable || 
+        (Date.now() - timestampsLastChecked > TIMESTAMPS_RETRY_INTERVAL);
+      
+      if (shouldTryTimestamps) {
+        const timestampsResponse = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}/with-timestamps`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'xi-api-key': ELEVENLABS_API_KEY,
+            },
+            body: JSON.stringify({
+              text,
+              model_id: 'eleven_multilingual_v2',
+              voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75,
+                style: 0.5,
+                use_speaker_boost: true,
+              },
+            }),
+          }
+        );
+
+        if (timestampsResponse.ok) {
+          const data = await timestampsResponse.json();
+          
+          const alignment = data.alignment || {};
+          const characters = alignment.characters || [];
+          const startTimes = alignment.character_start_times_seconds || [];
+          const endTimes = alignment.character_end_times_seconds || [];
+          
+          const words: { word: string; start: number; end: number }[] = [];
+          let currentWord = '';
+          let wordStart: number | null = null;
+          
+          for (let i = 0; i < characters.length; i++) {
+            const char = characters[i];
+            const isLastChar = i === characters.length - 1;
+            
+            if (char === ' ' || isLastChar) {
+              if (isLastChar && char !== ' ') {
+                currentWord += char;
+              }
+              if (currentWord && wordStart !== null) {
+                const wordEnd = char === ' ' ? endTimes[i - 1] : endTimes[i];
+                words.push({
+                  word: currentWord,
+                  start: wordStart,
+                  end: wordEnd
+                });
+              }
+              currentWord = '';
+              wordStart = null;
+            } else {
+              if (wordStart === null) {
+                wordStart = startTimes[i];
+              }
+              currentWord += char;
+            }
+          }
+          
+          const audioBase64 = data.audio_base64;
+          
+          return res.json({
+            audio: audioBase64,
+            words: words,
+            duration: endTimes.length > 0 ? endTimes[endTimes.length - 1] : 0,
+            hasWordTiming: words.length > 0
+          });
+        } else {
+          console.log("Timestamps endpoint returned", timestampsResponse.status, "- will retry in 5 minutes");
+          timestampsEndpointAvailable = false;
+          timestampsLastChecked = Date.now();
+        }
+      }
+      
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
+        {
+          method: 'POST',
+          headers: {
+            'Accept': 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': ELEVENLABS_API_KEY,
+          },
+          body: JSON.stringify({
+            text,
+            model_id: 'eleven_multilingual_v2',
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+              style: 0.5,
+              use_speaker_boost: true,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("ElevenLabs API error:", errorText);
+        return res.status(response.status).json({ message: "Failed to generate speech" });
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+      
+      res.json({
+        audio: audioBase64,
+        words: [],
+        duration: 0,
+        hasWordTiming: false
+      });
+    } catch (error) {
+      console.error("Error generating speech:", error);
+      res.status(500).json({ message: "Failed to generate speech" });
+    }
+  });
+
+  // ========== TEACHER COURSEWORK MARKETPLACE ==========
+  
+  // Public marketplace routes
+  app.get('/api/marketplace', async (req, res) => {
+    try {
+      const items = await storage.getPublishedCoursework();
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching marketplace items:", error);
+      res.status(500).json({ message: "Failed to fetch marketplace items" });
+    }
+  });
+
+  app.get('/api/marketplace/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.getCourseworkById(id);
+      if (!item || !item.isPublished) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      res.json(item);
+    } catch (error) {
+      console.error("Error fetching marketplace item:", error);
+      res.status(500).json({ message: "Failed to fetch item" });
+    }
+  });
+
+  // Leaderboard - top teachers and products (placeholder data)
+  app.get('/api/marketplace/leaderboard/teachers', async (req, res) => {
+    try {
+      const teachers = await storage.getTeachers();
+      res.json(teachers.slice(0, 10));
+    } catch (error) {
+      console.error("Error fetching teacher leaderboard:", error);
+      res.status(500).json({ message: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get('/api/marketplace/leaderboard/products', async (req, res) => {
+    try {
+      const items = await storage.getPublishedCoursework();
+      const sorted = items.sort((a, b) => b.salesCount - a.salesCount);
+      res.json(sorted.slice(0, 10));
+    } catch (error) {
+      console.error("Error fetching product leaderboard:", error);
+      res.status(500).json({ message: "Failed to fetch leaderboard" });
+    }
+  });
+
+  // Teacher profile routes
+  app.get('/api/teachers', async (req, res) => {
+    try {
+      const teachers = await storage.getTeachers();
+      res.json(teachers);
+    } catch (error) {
+      console.error("Error fetching teachers:", error);
+      res.status(500).json({ message: "Failed to fetch teachers" });
+    }
+  });
+
+  app.get('/api/teachers/:id', async (req, res) => {
+    try {
+      const teacher = await storage.getTeacherById(req.params.id);
+      if (!teacher) {
+        return res.status(404).json({ message: "Teacher not found" });
+      }
+      const items = await storage.getCourseworkByTeacher(req.params.id);
+      const publishedItems = items.filter(i => i.isPublished);
+      res.json({ ...teacher, courseworkItems: publishedItems });
+    } catch (error) {
+      console.error("Error fetching teacher:", error);
+      res.status(500).json({ message: "Failed to fetch teacher" });
+    }
+  });
+
+  // User role change (supports both auth methods)
+  app.post('/api/user/role', async (req: any, res) => {
+    try {
+      // Support both email/password auth (session) and Replit auth (passport)
+      const userId = getUserIdFromRequest(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const { role } = req.body;
+      if (!role || !['teacher', 'student'].includes(role)) {
+        return res.status(400).json({ message: "Role must be 'teacher' or 'student'" });
+      }
+      
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // If changing to teacher, reset verification status
+      if (role === 'teacher' && currentUser.userRole !== 'teacher') {
+        await storage.updateUserRole(userId, role);
+        await storage.updateTeacherVerificationStatus(userId, 'unverified');
+        const updatedUser = await storage.getUser(userId);
+        res.json({ ...updatedUser, passwordHash: undefined });
+      } else {
+        const user = await storage.updateUserRole(userId, role);
+        res.json({ ...user, passwordHash: undefined });
+      }
+    } catch (error) {
+      console.error("Error setting user role:", error);
+      res.status(500).json({ message: "Failed to set role" });
+    }
+  });
+
+  // User profile update (supports both auth methods)
+  app.patch('/api/user/profile', async (req: any, res) => {
+    try {
+      const userId = getUserIdFromRequest(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const { firstName, lastName } = req.body;
+      const user = await storage.updateUserProfile(userId, { firstName, lastName });
+      res.json({ ...user, passwordHash: undefined });
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // User password change (supports both auth methods)
+  app.post('/api/user/change-password', async (req: any, res) => {
+    try {
+      const userId = getUserIdFromRequest(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current and new passwords are required" });
+      }
+      
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user || !user.passwordHash) {
+        return res.status(400).json({ message: "Password change not available for this account type" });
+      }
+      
+      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+      
+      const newHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+      await storage.updateUserPassword(userId, newHash);
+      res.json({ success: true, message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // User notification preferences (supports both auth methods)
+  app.patch('/api/user/notifications', async (req: any, res) => {
+    try {
+      const userId = getUserIdFromRequest(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const { marketingEmailsOptIn, contentAlertsOptIn, teacherUpdatesOptIn } = req.body;
+      const user = await storage.updateUserNotifications(userId, {
+        marketingEmailsOptIn,
+        contentAlertsOptIn,
+        teacherUpdatesOptIn,
+      });
+      res.json({ ...user, passwordHash: undefined });
+    } catch (error) {
+      console.error("Error updating notifications:", error);
+      res.status(500).json({ message: "Failed to update notification preferences" });
+    }
+  });
+
+  // Teacher profile update
+  app.put('/api/teacher/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== 'teacher') {
+        return res.status(403).json({ message: "Teacher access required" });
+      }
+      
+      const { bio, subjectsTaught, experienceYears } = req.body;
+      const updated = await storage.updateTeacherProfile(userId, {
+        bio,
+        subjectsTaught,
+        experienceYears,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating teacher profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Teacher coursework CRUD
+  app.get('/api/teacher/coursework', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== 'teacher') {
+        return res.status(403).json({ message: "Teacher access required" });
+      }
+      
+      const items = await storage.getCourseworkByTeacher(userId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching teacher coursework:", error);
+      res.status(500).json({ message: "Failed to fetch coursework" });
+    }
+  });
+
+  app.post('/api/teacher/coursework', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userRole !== 'teacher') {
+        return res.status(403).json({ message: "Teacher access required" });
+      }
+      
+      const result = insertCourseworkItemSchema.safeParse({ ...req.body, teacherId: userId });
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      
+      const item = await storage.createCoursework(result.data as InsertCourseworkItem);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Error creating coursework:", error);
+      res.status(500).json({ message: "Failed to create coursework" });
+    }
+  });
+
+  app.put('/api/teacher/coursework/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const id = parseInt(req.params.id);
+      
+      if (!user || user.userRole !== 'teacher') {
+        return res.status(403).json({ message: "Teacher access required" });
+      }
+      
+      const existing = await storage.getCourseworkById(id);
+      if (!existing || existing.teacherId !== userId) {
+        return res.status(404).json({ message: "Coursework not found" });
+      }
+      
+      const result = updateCourseworkItemSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+      
+      const item = await storage.updateCoursework(id, result.data as Partial<InsertCourseworkItem>);
+      res.json(item);
+    } catch (error) {
+      console.error("Error updating coursework:", error);
+      res.status(500).json({ message: "Failed to update coursework" });
+    }
+  });
+
+  app.delete('/api/teacher/coursework/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const id = parseInt(req.params.id);
+      
+      if (!user || user.userRole !== 'teacher') {
+        return res.status(403).json({ message: "Teacher access required" });
+      }
+      
+      const existing = await storage.getCourseworkById(id);
+      if (!existing || existing.teacherId !== userId) {
+        return res.status(404).json({ message: "Coursework not found" });
+      }
+      
+      await storage.deleteCoursework(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting coursework:", error);
+      res.status(500).json({ message: "Failed to delete coursework" });
+    }
+  });
+
+  return httpServer;
 }
