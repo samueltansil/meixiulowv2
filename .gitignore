@@ -2,9 +2,20 @@
 node_modules
 
 # build output
+client/dist
+server/dist
 
 # environment variables
 .env
+.env.local
 
 # replit
 .replit
+
+# IDE
+.vscode
+.idea
+
+# logs
+*.log
+/tmp
