@@ -129,7 +129,7 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({
         isSubscribed,
-        plan: plan,
+        subscriptionPlan: plan,
         subscriptionStartDate: isSubscribed ? new Date() : null,
         subscriptionEndDate: isSubscribed ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null,
         updatedAt: new Date(),
@@ -201,7 +201,7 @@ export class DatabaseStorage implements IStorage {
   async incrementVideoViews(id: number): Promise<void> {
     await db
       .update(videos)
-      .set({ viewCount: sql`${videos.viewCount} + 1` })
+      .set({ views: sql`${videos.views} + 1` })
       .where(eq(videos.id, id));
   }
 
@@ -223,7 +223,7 @@ export class DatabaseStorage implements IStorage {
   async cancelSubscription(userId: string): Promise<void> {
     await db
       .update(subscriptions)
-      .set({ status: 'cancelled', updatedAt: new Date() })
+      .set({ status: 'cancelled' })
       .where(eq(subscriptions.userId, userId));
   }
 

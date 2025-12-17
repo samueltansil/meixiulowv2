@@ -40,11 +40,16 @@ export function usePoints() {
     },
   });
 
+  const refetchPoints = () => {
+    queryClient.invalidateQueries({ queryKey: ['points'] });
+  };
+
   return {
     points: data?.points ?? 0,
     isLoading,
     error,
     addPoints: addPointsMutation.mutate,
     isAddingPoints: addPointsMutation.isPending,
+    refetchPoints,
   };
 }

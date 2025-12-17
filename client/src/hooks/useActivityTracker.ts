@@ -4,7 +4,12 @@ import { useAuth } from "./useAuth";
 
 type ActivityType = 'reading' | 'watching' | 'playing';
 
-export function useActivityTracker(activityType: ActivityType) {
+interface UseActivityTrackerOptions {
+  enabled?: boolean;
+}
+
+export function useActivityTracker(activityType: ActivityType, options: UseActivityTrackerOptions = {}) {
+  const { enabled = true } = options;
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const startTimeRef = useRef<number | null>(null);
@@ -27,7 +32,7 @@ export function useActivityTracker(activityType: ActivityType) {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !enabled) return;
 
     startTimeRef.current = Date.now();
 
@@ -52,5 +57,5 @@ export function useActivityTracker(activityType: ActivityType) {
         }
       }
     };
-  }, [user, activityType]);
+  }, [user, activityType, enabled]);
 }

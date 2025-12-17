@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { usePoints } from "@/hooks/usePoints";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { StoryGame } from "@shared/schema";
 import PuzzleGame from "@/components/games/PuzzleGame";
 import WhackAMoleGame from "@/components/games/WhackAMoleGame";
@@ -14,6 +14,7 @@ import MemoryMatchGame from "@/components/games/MemoryMatchGame";
 import QuizGame from "@/components/games/QuizGame";
 import TimelineGame from "@/components/games/TimelineGame";
 import { useGameAudio } from "@/hooks/useGameAudio";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 const GAME_TYPE_ICONS: Record<string, typeof Puzzle> = {
   puzzle: Puzzle,
@@ -35,11 +36,13 @@ export default function GamePreview() {
   const params = useParams<{ id: string }>();
   const gameId = parseInt(params.id || "0");
   const [, navigate] = useLocation();
-  const { points, addPoints, isAddingPoints } = usePoints();
+  const { points, refetchPoints, addPoints } = usePoints();
   const { toast } = useToast();
   const [gameStarted, setGameStarted] = useState(false);
   const [gameCompleted, setGameCompleted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  
+  useActivityTracker('playing', { enabled: gameStarted && !gameCompleted });
 
   const handleBackToGames = () => {
     navigate("/games");
@@ -88,7 +91,7 @@ export default function GamePreview() {
         });
         if (res.ok) {
           const data = await res.json();
-          addPoints(data.pointsEarned);
+          refetchPoints();
           toast({
             title: `+${data.pointsEarned} points!`,
             description: data.message,
@@ -100,7 +103,8 @@ export default function GamePreview() {
             description: "Great job completing the game!",
           });
         }
-      } catch {
+      } catch (error) {
+        console.error('Failed to complete game:', error);
         addPoints(pointsEarned);
         toast({
           title: `+${pointsEarned} points!`,
