@@ -232,7 +232,7 @@ export class DatabaseStorage implements IStorage {
     const [activity] = await db
       .select()
       .from(userActivity)
-      .where(and(eq(userActivity.userId, userId), eq(userActivity.activityDate, today)));
+      .where(and(eq(userActivity.userId, userId), eq(userActivity.date, today)));
     return activity;
   }
 
@@ -241,13 +241,13 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getTodayActivity(userId);
     
     if (existing) {
-      const updateData: Partial<UserActivity> = { updatedAt: new Date() };
+      const updateData: Partial<UserActivity> = {};
       if (activityType === 'reading') {
-        updateData.readingSeconds = (existing.readingSeconds || 0) + seconds;
+        updateData.readingTimeSeconds = (existing.readingTimeSeconds || 0) + seconds;
       } else if (activityType === 'watching') {
-        updateData.watchingSeconds = (existing.watchingSeconds || 0) + seconds;
+        updateData.watchingTimeSeconds = (existing.watchingTimeSeconds || 0) + seconds;
       } else {
-        updateData.playSeconds = (existing.playSeconds || 0) + seconds;
+        updateData.playingTimeSeconds = (existing.playingTimeSeconds || 0) + seconds;
       }
       
       const [updated] = await db
@@ -259,10 +259,10 @@ export class DatabaseStorage implements IStorage {
     } else {
       const insertData: any = {
         userId,
-        activityDate: today,
-        readingSeconds: activityType === 'reading' ? seconds : 0,
-        watchingSeconds: activityType === 'watching' ? seconds : 0,
-        playSeconds: activityType === 'playing' ? seconds : 0,
+        date: today,
+        readingTimeSeconds: activityType === 'reading' ? seconds : 0,
+        watchingTimeSeconds: activityType === 'watching' ? seconds : 0,
+        playingTimeSeconds: activityType === 'playing' ? seconds : 0,
       };
       
       const [created] = await db

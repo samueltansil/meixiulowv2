@@ -16,11 +16,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Backend
 - **Framework**: Express.js with Node.js and TypeScript.
-- **Authentication**: Replit OpenID Connect (OIDC) via Passport.js, `express-session` with PostgreSQL store.
+- **Authentication**: Email/password login with bcrypt, `express-session` with PostgreSQL store (connect-pg-simple).
 - **API Design**: RESTful endpoints under `/api`, authenticated routes using `isAuthenticated` middleware.
 - **Database**: PostgreSQL with Drizzle ORM for type-safe operations, `node-postgres` for connection pooling.
 - **Middleware**: JSON/URL-encoded body parsing, custom logging, static file serving.
-- **Development**: Vite integration for HMR, custom Vite plugins for Replit environment.
+- **Development**: Vite integration for HMR.
 
 ### Data Storage
 - **Database**: PostgreSQL as the primary relational database.
@@ -71,6 +71,12 @@ Preferred communication style: Simple, everyday language.
   - Global `window.whypalsTracker` object for manual control
 
 ## Recent Changes (December 2025)
+- **Full Portability Migration**: Removed all Replit-specific dependencies
+  - Removed Replit Vite plugins (@replit/vite-plugin-cartographer, dev-banner, runtime-error-modal)
+  - Replaced Replit OIDC authentication with email/password login using bcrypt
+  - Created portable server/auth.ts with PostgreSQL session storage via connect-pg-simple
+  - Updated all route handlers to use session-based auth (req.session.userId)
+  - Fixed activity tracking SQL query to match schema field names
 - **Source-Based Rebuild**: Restored fully portable development and build setup
   - Created frontend entry files: `client/index.html`, `client/src/main.tsx`, `client/src/App.tsx`
   - New TypeScript backend in `server/` replaces legacy bundled artifact
@@ -102,8 +108,16 @@ See `.env.example` for all required variables including:
 
 ## External Dependencies
 
-- **Authentication**: Replit OIDC.
+- **Authentication**: Email/password with bcrypt (portable, no external dependencies).
 - **Payment Processing**: Stripe (prepared for subscription management, placeholder implementation).
 - **UI Libraries**: shadcn/ui, Radix UI, Lucide React (icons), date-fns, class-variance-authority (CVA), clsx, tailwind-merge.
-- **Development Tools**: TypeScript, ESBuild, Replit-specific Vite plugins.
+- **Development Tools**: TypeScript, ESBuild.
 - **Asset Management**: Google Fonts (Fredoka, Quicksand).
+
+## Portability
+
+This project is fully portable and can run on any standard Node.js environment with PostgreSQL:
+- No Replit-specific dependencies or plugins
+- Standard email/password authentication with PostgreSQL session storage
+- All environment variables are standard (DATABASE_URL, SESSION_SECRET, etc.)
+- Build scripts work on any platform: `npm run build && npm run start`
