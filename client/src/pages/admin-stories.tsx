@@ -559,8 +559,7 @@ export default function AdminStories() {
 
   if (!isAuthenticated || error) {
     return <AdminLoginDialog onSuccess={() => {
-      clearStoredToken();
-      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
       setIsAuthenticated(true);
     }} />;
   }

@@ -439,8 +439,7 @@ export default function AdminVideos() {
 
   if (!isAuthenticated || error) {
     return <AdminLoginDialog onSuccess={() => {
-      clearStoredToken();
-      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
       setIsAuthenticated(true);
     }} />;
   }

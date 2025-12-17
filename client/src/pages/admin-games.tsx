@@ -859,8 +859,7 @@ export default function AdminGames() {
 
   if (!isAuthenticated || error) {
     return <AdminLoginDialog onSuccess={() => {
-      clearStoredToken();
-      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
       setIsAuthenticated(true);
     }} />;
   }
