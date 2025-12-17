@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite } from "./vite";
+import { serveStatic } from "./static";
 import { createServer } from "http";
 
 const app = express();
@@ -72,7 +73,15 @@ app.use((req, res, next) => {
   });
 
   // Setup Vite for hot module replacement in development
-  await setupVite(httpServer, app);
+  // Falls back to static serving if Vite setup fails
+  let viteEnabled = true;
+  try {
+    await setupVite(httpServer, app);
+  } catch (error) {
+    viteEnabled = false;
+    log(`Vite setup failed, falling back to static serving: ${error}`);
+    serveStatic(app);
+  }
 
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
@@ -82,7 +91,11 @@ app.use((req, res, next) => {
       reusePort: true,
     },
     () => {
-      log(`[DEV] serving on port ${port} with Vite HMR`);
+      if (viteEnabled) {
+        log(`[DEV] serving on port ${port} with Vite HMR`);
+      } else {
+        log(`[DEV] serving on port ${port} (static fallback, Vite unavailable)`);
+      }
     },
   );
 })();

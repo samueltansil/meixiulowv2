@@ -79,6 +79,11 @@ Preferred communication style: Simple, everyday language.
   - Created portable server/auth.ts with PostgreSQL session storage via connect-pg-simple
   - Updated all route handlers to use session-based auth (req.session.userId)
   - Fixed activity tracking SQL query to match schema field names
+- **Pure Node.js Production Build**: Server bundle has zero Vite dependencies
+  - Created separate `server/dev.ts` for development with Vite HMR
+  - Production `server/index.ts` uses only Express static file serving
+  - Built `server/dist/index.cjs` is pure Node.js, works with PM2 on any VPS
+  - No dynamic imports or Vite references in production bundle
 - **Source-Based Rebuild**: Restored fully portable development and build setup
   - Created frontend entry files: `client/index.html`, `client/src/main.tsx`, `client/src/App.tsx`
   - New TypeScript backend in `server/` replaces legacy bundled artifact
@@ -151,14 +156,16 @@ whypals/
 │   ├── dist/              # Built output (production)
 │   └── index.html         # Entry HTML
 ├── server/                # Backend Express server
-│   ├── index.ts          # Entry point (loads dotenv)
+│   ├── index.ts          # Production entry point (pure Node.js)
+│   ├── dev.ts            # Development entry point (with Vite HMR)
 │   ├── routes.ts         # All API routes
 │   ├── auth.ts           # Session configuration
 │   ├── db.ts             # Database connection
 │   ├── storage.ts        # Database operations class
+│   ├── static.ts         # Static file serving (production)
 │   ├── r2.ts             # Cloudflare R2 storage
 │   ├── vite.ts           # Dev-only Vite middleware
-│   └── dist/             # Built output
+│   └── dist/             # Built output (index.cjs - pure Node.js)
 ├── shared/               # Shared TypeScript types
 ├── .env.example          # Environment template
 ├── DEPLOY.md             # Deployment guide
