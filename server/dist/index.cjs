@@ -148,6 +148,7 @@ __export(index_exports, {
   log: () => log
 });
 module.exports = __toCommonJS(index_exports);
+var import_config = require("dotenv/config");
 var import_express2 = __toESM(require("express"), 1);
 
 // server/routes.ts
