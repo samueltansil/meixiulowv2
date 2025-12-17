@@ -153,7 +153,10 @@ function StoryForm({
   const [isFeatured, setIsFeatured] = useState(story?.isFeatured || false);
   const [isPublished, setIsPublished] = useState(story?.isPublished || false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isContentImageUploading, setIsContentImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const contentImageInputRef = useRef<HTMLInputElement>(null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,6 +212,66 @@ function StoryForm({
       setIsUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleContentImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: "Error", description: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Error", description: "Image must be smaller than 5MB", variant: "destructive" });
+      return;
+    }
+
+    setIsContentImageUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const token = getStoredToken();
+
+      const uploadRes = await fetch('/api/admin/upload/story-content-image', {
+        method: 'POST',
+        headers: token ? { 'x-admin-token': token } : {},
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const { imageUrl } = await uploadRes.json();
+      
+      const textarea = contentTextareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const imageTag = `[IMAGE:${imageUrl}]`;
+        const newContent = content.substring(0, start) + imageTag + content.substring(end);
+        setContent(newContent);
+        setTimeout(() => {
+          textarea.focus();
+          const newCursorPos = start + imageTag.length;
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+      } else {
+        setContent(content + `\n[IMAGE:${imageUrl}]\n`);
+      }
+      
+      toast({ title: "Image inserted!" });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({ title: "Error", description: "Failed to upload image", variant: "destructive" });
+    } finally {
+      setIsContentImageUploading(false);
+      if (contentImageInputRef.current) {
+        contentImageInputRef.current.value = '';
       }
     }
   };
@@ -270,16 +333,43 @@ function StoryForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="content">Content</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="content">Content</Label>
+          <div className="flex items-center gap-2">
+            <input
+              ref={contentImageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleContentImageSelect}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => contentImageInputRef.current?.click()}
+              disabled={isContentImageUploading}
+            >
+              {isContentImageUploading ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+              ) : (
+                <Upload className="w-4 h-4 mr-1" />
+              )}
+              Insert Image
+            </Button>
+          </div>
+        </div>
         <Textarea 
           id="content"
+          ref={contentTextareaRef}
           value={content} 
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Full story content..."
+          placeholder="Full story content... Use [IMAGE:url] to insert inline images."
           rows={10}
           required
           data-testid="input-story-content"
         />
+        <p className="text-xs text-muted-foreground">Click cursor position, then "Insert Image" to add inline images. Format: [IMAGE:url]</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

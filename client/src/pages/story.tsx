@@ -12,6 +12,34 @@ import { useQuery } from "@tanstack/react-query";
 import type { Story, StoryGame } from "@shared/schema";
 import { format } from "date-fns";
 
+const IMAGE_TAG_REGEX = /\[IMAGE:([^\]]+)\]/g;
+const FULL_IMAGE_TAG_REGEX = /^\[IMAGE:([^\]]+)\]$/;
+
+function isImageParagraph(text: string): boolean {
+  return FULL_IMAGE_TAG_REGEX.test(text.trim());
+}
+
+function getImageUrl(text: string): string | null {
+  const match = text.trim().match(FULL_IMAGE_TAG_REGEX);
+  return match ? match[1] : null;
+}
+
+function removeImageTags(text: string): string {
+  return text.replace(IMAGE_TAG_REGEX, '').trim();
+}
+
+function InlineImage({ url }: { url: string }) {
+  return (
+    <div className="my-6 flex justify-center">
+      <img 
+        src={url} 
+        alt="Story illustration" 
+        className="max-w-full h-auto rounded-xl shadow-lg max-h-96 object-contain"
+      />
+    </div>
+  );
+}
+
 interface WordTiming {
   word: string;
   start: number;
@@ -153,6 +181,11 @@ export default function StoryPage() {
     article?.content.split('\n\n') || [], 
     [article?.content]
   );
+
+  const textParagraphsForTTS = useMemo(() => 
+    paragraphs.filter(p => !isImageParagraph(p)).map(p => removeImageTags(p)).filter(p => p.length > 0),
+    [paragraphs]
+  );
   
   const {
     isPlaying,
@@ -212,7 +245,7 @@ export default function StoryPage() {
 
   const handlePlayPause = () => {
     if (!isPlaying) {
-      speak(paragraphs);
+      speak(textParagraphsForTTS);
     } else if (isPaused) {
       resume();
     } else {
@@ -348,7 +381,7 @@ export default function StoryPage() {
               <div className="space-y-2">
                 <Progress value={loadingProgress} className="h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Preparing audio for all {paragraphs.length} paragraphs...</span>
+                  <span>Preparing audio for all {textParagraphsForTTS.length} paragraphs...</span>
                   <span>{loadingProgress}% loaded</span>
                 </div>
               </div>
@@ -358,7 +391,7 @@ export default function StoryPage() {
               <div className="space-y-2">
                 <Progress value={progress} className="h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Paragraph {currentParagraphIndex + 1} of {paragraphs.length}</span>
+                  <span>Paragraph {currentParagraphIndex + 1} of {textParagraphsForTTS.length}</span>
                   <span>{Math.round(progress)}% complete</span>
                 </div>
               </div>
@@ -370,22 +403,35 @@ export default function StoryPage() {
           </div>
 
           <div className="prose prose-lg max-w-none" data-testid="story-content">
-            {paragraphs.map((paragraph, index) => {
-              const isCurrent = currentParagraphIndex === index;
-              const isCompleted = currentParagraphIndex > index;
-              return (
-                <HighlightedParagraph
-                  key={index}
-                  text={paragraph}
-                  isCurrentParagraph={isCurrent}
-                  isCompleted={isCompleted}
-                  isReadingActive={isPlaying}
-                  paragraphRef={isCurrent ? currentParagraphRef : undefined}
-                  words={isCurrent ? currentWords : undefined}
-                  currentWordIndex={isCurrent ? currentWordIndex : undefined}
-                />
-              );
-            })}
+            {(() => {
+              let ttsIndex = -1;
+              return paragraphs.map((paragraph, index) => {
+                const imageUrl = getImageUrl(paragraph);
+                if (imageUrl) {
+                  return <InlineImage key={index} url={imageUrl} />;
+                }
+                
+                const cleanedText = removeImageTags(paragraph);
+                if (!cleanedText) return null;
+                
+                ttsIndex++;
+                const isCurrent = currentParagraphIndex === ttsIndex;
+                const isCompleted = currentParagraphIndex > ttsIndex;
+                
+                return (
+                  <HighlightedParagraph
+                    key={index}
+                    text={cleanedText}
+                    isCurrentParagraph={isCurrent}
+                    isCompleted={isCompleted}
+                    isReadingActive={isPlaying}
+                    paragraphRef={isCurrent ? currentParagraphRef : undefined}
+                    words={isCurrent ? currentWords : undefined}
+                    currentWordIndex={isCurrent ? currentWordIndex : undefined}
+                  />
+                );
+              });
+            })()}
           </div>
 
           <div className="mt-12 pt-8 border-t border-border">
