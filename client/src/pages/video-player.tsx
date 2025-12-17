@@ -6,7 +6,6 @@ import type { Video } from "@shared/schema";
 import logo from "@assets/generated_images/cute_owl_mascot_for_kids_news_site.png";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useState, useRef } from "react";
-import funnyCatVideo from "@assets/generated_videos/funny_cat_playing_with_yarn.mp4";
 
 function extractYouTubeId(url: string): string | null {
   const patterns = [
@@ -40,9 +39,7 @@ export default function VideoPlayer() {
   });
 
   const getLocalVideoSource = () => {
-    if (video?.id === 5) {
-      return funnyCatVideo;
-    }
+    // Local video assets removed - videos are served from R2 or YouTube
     return null;
   };
 

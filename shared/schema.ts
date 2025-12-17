@@ -28,6 +28,7 @@ export const users = pgTable("users", {
   contentAlertsOptIn: boolean("content_alerts_opt_in").default(true),
   teacherUpdatesOptIn: boolean("teacher_updates_opt_in").default(false),
   teacherVerificationStatus: varchar("teacher_verification_status", { length: 50 }),
+  verificationRequestedAt: timestamp("verification_requested_at"),
   passwordHash: varchar("password_hash", { length: 255 }),
   firstName: varchar("first_name", { length: 100 }),
   lastName: varchar("last_name", { length: 100 }),
@@ -82,6 +83,7 @@ export const storyGames = pgTable("story_games", {
   backgroundMusicUrl: text("background_music_url"),
   soundEffectsEnabled: boolean("sound_effects_enabled").default(true),
   isActive: boolean("is_active").default(true),
+  isFeatured: boolean("is_featured").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -187,4 +189,50 @@ export type InsertVideo = typeof videos.$inferInsert;
 export type InsertStory = typeof stories.$inferInsert;
 export type InsertStoryGame = typeof storyGames.$inferInsert;
 export type InsertCourseworkItem = typeof courseworkItems.$inferInsert;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+export type InsertR2VideoMetadata = typeof r2VideoMetadata.$inferInsert;
+export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type Video = typeof videos.$inferSelect;
+export type Story = typeof stories.$inferSelect;
+export type StoryGame = typeof storyGames.$inferSelect;
+export type CourseworkItem = typeof courseworkItems.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type UserDailyActivity = typeof userDailyActivity.$inferSelect;
+export type UserActivity = UserDailyActivity; // Alias
+export type UserPointsLedger = typeof userPointsLedger.$inferSelect;
+export type UserGameCompletion = typeof userGameCompletions.$inferSelect;
+export type R2VideoMetadata = typeof r2VideoMetadata.$inferSelect;
+
+// Alias for userDailyActivity for backward compatibility  
+export const userActivity = userDailyActivity;
+
+// Constants for coursework types
+export const COURSEWORK_TYPES = [
+  "PDF",
+  "Unit Plan",
+  "Worksheet",
+  "Assessment",
+  "Presentation",
+  "Video",
+  "Quiz",
+  "Activity",
+  "Lesson Plan",
+  "Resource Pack",
+] as const;
+
+// Constants for subjects
+export const SUBJECTS = [
+  "Mathematics",
+  "Science",
+  "English",
+  "History",
+  "Geography",
+  "Art",
+  "Music",
+  "Physical Education",
+  "Technology",
+  "Languages",
+  "Social Studies",
+  "Health",
+] as const;

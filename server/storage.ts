@@ -129,7 +129,7 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({
         isSubscribed,
-        subscriptionPlan: plan,
+        plan: plan,
         subscriptionStartDate: isSubscribed ? new Date() : null,
         subscriptionEndDate: isSubscribed ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null,
         updatedAt: new Date(),
@@ -176,7 +176,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFeaturedVideos(): Promise<Video[]> {
-    return await db.select().from(videos).where(eq(videos.isFeatured, true)).orderBy(desc(videos.createdAt));
+    // Return first 5 videos as featured (no isFeatured column)
+    return await db.select().from(videos).orderBy(desc(videos.createdAt)).limit(5);
   }
 
   async createVideo(videoData: InsertVideo): Promise<Video> {
@@ -200,7 +201,7 @@ export class DatabaseStorage implements IStorage {
   async incrementVideoViews(id: number): Promise<void> {
     await db
       .update(videos)
-      .set({ views: sql`${videos.views} + 1` })
+      .set({ viewCount: sql`${videos.viewCount} + 1` })
       .where(eq(videos.id, id));
   }
 
@@ -222,7 +223,7 @@ export class DatabaseStorage implements IStorage {
   async cancelSubscription(userId: string): Promise<void> {
     await db
       .update(subscriptions)
-      .set({ status: 'cancelled', endDate: new Date() })
+      .set({ status: 'cancelled', updatedAt: new Date() })
       .where(eq(subscriptions.userId, userId));
   }
 
@@ -231,7 +232,7 @@ export class DatabaseStorage implements IStorage {
     const [activity] = await db
       .select()
       .from(userActivity)
-      .where(and(eq(userActivity.userId, userId), eq(userActivity.date, today)));
+      .where(and(eq(userActivity.userId, userId), eq(userActivity.activityDate, today)));
     return activity;
   }
 
@@ -242,11 +243,11 @@ export class DatabaseStorage implements IStorage {
     if (existing) {
       const updateData: Partial<UserActivity> = { updatedAt: new Date() };
       if (activityType === 'reading') {
-        updateData.readingTimeSeconds = existing.readingTimeSeconds + seconds;
+        updateData.readingSeconds = (existing.readingSeconds || 0) + seconds;
       } else if (activityType === 'watching') {
-        updateData.watchingTimeSeconds = existing.watchingTimeSeconds + seconds;
+        updateData.watchingSeconds = (existing.watchingSeconds || 0) + seconds;
       } else {
-        updateData.playingTimeSeconds = existing.playingTimeSeconds + seconds;
+        updateData.playSeconds = (existing.playSeconds || 0) + seconds;
       }
       
       const [updated] = await db
@@ -258,10 +259,10 @@ export class DatabaseStorage implements IStorage {
     } else {
       const insertData: any = {
         userId,
-        date: today,
-        readingTimeSeconds: activityType === 'reading' ? seconds : 0,
-        watchingTimeSeconds: activityType === 'watching' ? seconds : 0,
-        playingTimeSeconds: activityType === 'playing' ? seconds : 0,
+        activityDate: today,
+        readingSeconds: activityType === 'reading' ? seconds : 0,
+        watchingSeconds: activityType === 'watching' ? seconds : 0,
+        playSeconds: activityType === 'playing' ? seconds : 0,
       };
       
       const [created] = await db
