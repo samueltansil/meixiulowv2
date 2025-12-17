@@ -1,0 +1,126 @@
+Task Overview
+
+This project currently runs correctly in production using precompiled artifacts located in the dist/ directory. However, the frontend and backend source code required to rebuild or develop the application is missing or incomplete, which has broken the development workflow. The objective of this task is to restore a fully portable, source-based build and development setup while preserving the existing production behavior.
+
+Use the least usage credit possible and prioritize direct implementation over exploration. Do not speculate, reverse-engineer, or attempt to recover original source logic from bundled files. Treat the dist/ directory strictly as a runtime reference for behavior, routing, and build outputs — not as source material.
+
+Frontend Reality Acknowledgement (Important)
+
+The original frontend source code does not exist. Only prebuilt assets (index.html, JS bundle, CSS) are present under dist/public/. The original React application cannot be rebuilt.
+
+Therefore, your task is not to recover the original UI. Instead, you must create a new, clean React + Vite frontend source that:
+
+Compiles correctly
+
+Runs in development mode
+
+Builds into static assets
+
+Is served by the backend in production
+
+Can gradually replace the prebuilt UI going forward
+
+UI parity is not required. Functional correctness and portability are the priority.
+
+Frontend Source Reconstruction
+
+Create a complete Vite + React + TypeScript frontend under the client/ directory.
+
+You must create all missing entry and core files, including but not limited to:
+
+client/index.html
+
+client/src/main.tsx
+
+client/src/App.tsx
+
+You may reuse or integrate any existing code found under:
+
+client/src/components
+
+client/src/hooks
+
+client/src/lib
+
+However, assume these files are incomplete and do not rely on them for application structure. Build a minimal but valid React application shell that renders successfully and can communicate with the backend.
+
+Ensure the frontend builds to client/dist using standard Vite behavior.
+
+Backend Source Stabilization
+
+The current production server runs from dist/index.cjs, which is a bundled artifact whose original source no longer exists. You must create or complete a clean TypeScript backend under the server/ directory that replaces this dependency for future development and builds.
+
+The backend must:
+
+Use Express (or the framework already implied)
+
+Bind to 0.0.0.0
+
+Respect the PORT environment variable (default 5000)
+
+Serve static files from client/dist in production
+
+Expose a basic root route (/) so Cannot GET / no longer occurs
+
+Do not delete dist/index.cjs. Instead, ensure future workflows do not depend on it.
+
+Script and Workflow Repair (Critical)
+
+Fix package.json so all scripts are real, valid, and portable. Remove or replace broken references such as script/build.ts.
+
+After your changes, the following must be true:
+
+npm run dev
+Starts backend and frontend from source (concurrently or via proxy).
+
+npm run build
+Builds the frontend into client/dist and compiles the backend.
+
+npm run start
+Runs the compiled backend serving the built frontend.
+
+No script may depend on missing files or prebundled artifacts.
+
+Environment Configuration
+
+Create a .env file containing placeholders for all required environment variables, including but not limited to:
+
+Database URLs
+
+Session secrets
+
+Cloud storage credentials
+
+Third-party API keys
+
+Frontend API base URLs
+
+All configuration must use standard Node.js and Vite mechanisms. Do not rely on Replit-specific variables, auto-injection, or secrets tooling.
+
+Constraints
+
+Do not reverse-engineer bundled JS or CSS
+
+Do not attempt UI recovery from dist/
+
+Do not introduce unnecessary dependencies
+
+Do not refactor unrelated files
+
+Do not over-optimize or redesign the app
+
+Focus strictly on restoring portability, rebuildability, and developer control.
+
+Verification Requirements
+
+Before completion, ensure the following commands work on a clean Node.js 18+ environment:
+
+npm install
+
+npm run dev
+
+npm run build
+
+npm run start
+
+The application must start without relying on Replit-specific runtime behavior.

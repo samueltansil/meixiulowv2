@@ -10,7 +10,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = parseInt(process.env.PORT || "5000", 10);
+const isProduction = process.env.NODE_ENV === "production";
+const PORT = parseInt(process.env.PORT || (isProduction ? "5000" : "3001"), 10);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -49,14 +50,33 @@ app.use((req, res, next) => {
 
 registerActivityRoutes(app);
 
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 if (process.env.NODE_ENV === "production") {
-  const publicPath = path.join(__dirname, "public");
-  app.use(express.static(publicPath));
+  const clientDistPath = path.join(__dirname, "..", "client", "dist");
+  app.use(express.static(clientDistPath));
   
-  app.get("*", (req, res) => {
-    if (!req.path.startsWith("/api")) {
-      res.sendFile(path.join(publicPath, "index.html"));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) {
+      return next();
     }
+    res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>WhyPals Dev</title></head>
+        <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+          <h1>WhyPals Backend Running</h1>
+          <p>Frontend is served by Vite dev server on the same port via proxy.</p>
+          <p>API endpoints available at /api/*</p>
+        </body>
+      </html>
+    `);
   });
 }
 
