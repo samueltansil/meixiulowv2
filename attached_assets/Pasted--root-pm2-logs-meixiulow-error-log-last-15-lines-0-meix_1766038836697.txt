@@ -1,0 +1,33 @@
+/root/.pm2/logs/meixiulow-error.log last 15 lines:
+0|meixiulo |     at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:240:7)
+0|meixiulo |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|meixiulo |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|meixiulo |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+0|meixiulo | Error logging in: Error: getaddrinfo ENOTFOUND ep-dry-darkness-a1y5jlf4-pooler.apsoutheast-1.aws.neon.tech
+0|meixiulo |     at /root/meixiulow/node_modules/pg-pool/index.js:45:11
+0|meixiulo |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|meixiulo |     at async /root/meixiulow/node_modules/drizzle-orm/node-postgres/session.cjs:118:22
+0|meixiulo |     at async DatabaseStorage.getUserByEmail (/root/meixiulow/server/dist/index.cjs:345:20)
+0|meixiulo |     at async /root/meixiulow/server/dist/index.cjs:905:20 {
+0|meixiulo |   errno: -3008,
+0|meixiulo |   code: 'ENOTFOUND',
+0|meixiulo |   syscall: 'getaddrinfo',
+0|meixiulo |   hostname: 'ep-dry-darkness-a1y5jlf4-pooler.apsoutheast-1.aws.neon.tech'
+0|meixiulo | }
+
+/root/.pm2/logs/meixiulow-out.log last 15 lines:
+0|meixiulo | 5:48:21 AM [express] serving on port 5000
+0|meixiulo | 5:50:05 AM [express] serving on port 5000
+0|meixiulo | 5:55:07 AM [express] serving on port 5000
+0|meixiulo | 5:56:12 AM [express] GET /api/auth/me 401 in 2ms :: {"message":"Not authenticated"}
+0|meixiulo | 5:56:22 AM [express] POST /api/auth/login 500 in 896ms :: {"message":"Login failed"}
+0|meixiulo | 6:01:18 AM [express] serving on port 5000
+0|meixiulo | 6:02:57 AM [express] serving on port 5000
+0|meixiulo | 6:05:38 AM [express] serving on port 5000
+0|meixiulo | 6:09:01 AM [express] serving on port 5000
+0|meixiulo | 6:10:21 AM [express] serving on port 5000
+0|meixiulo | 6:13:23 AM [express] serving on port 5000
+0|meixiulo | 6:17:15 AM [express] serving on port 5000
+0|meixiulo | 6:17:34 AM [express] GET /api/auth/me 401 in 2ms :: {"message":"Not authenticated"}
+0|meixiulo | 6:17:44 AM [express] POST /api/auth/login 200 in 1444ms :: {"success":true,"user":{"id":"b086400e-2b6b-4015-bd5d-8a68d7983d1c","email":"samueljuliustansil@gmail.com","firstName":"Samuel","lastName":"Tansil","profileImageUrl":null,"points":50,"isAdmin":false,"isSubscribed":false,"subscriptionPlan":null,"subscriptionStartDate":null,"subscriptionEndDate":null,"userRole":"teacher","teacherVerificationStatus":"pending","verificationRequestedAt":"2025-12-17T05:17:28.126Z","bio":null,"subjectsTaught":null,"experienceYears":null,"reputationScore":0,"totalSales":0,"badges":null,"emailVerified":false,"emailVerificationToken":null,"emailVerificationExpiry":null,"agreedToTerms":true,"agreedToTermsAt":"2025-12-13T02:26:07.794Z","marketingEmailsOptIn":false,"contentAlertsOptIn":true,"teacherUpdatesOptIn":true,"createdAt":"2025-12-13T02:26:07.854Z","updatedAt":"2025-12-17T16:16:38.636Z"},"needsRoleSelection":false}
+0|meixiulo | 6:17:44 AM [express] GET /api/auth/me 401 in 1ms :: {"message":"Not authenticated"}
