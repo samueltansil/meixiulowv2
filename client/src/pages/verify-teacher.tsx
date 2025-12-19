@@ -141,7 +141,7 @@ export default function VerifyTeacher() {
       <footer className="bg-white border-t border-border py-8 mt-auto">
         <div className="container mx-auto px-4 text-center">
           <p className="text-xs text-muted-foreground/50">
-            © 2024 WhyPals for Kids. All rights reserved.
+            © 2026 Edu Foundations. All rights reserved.
           </p>
         </div>
       </footer>

@@ -144,7 +144,7 @@ export default function R2Videos() {
               <span className="font-heading text-xl font-bold text-muted-foreground">WhyPals</span>
             </div>
             <p className="text-xs text-muted-foreground/50">
-              © 2024 WhyPals for Kids. All rights reserved.
+              © 2026 Edu Foundations. All rights reserved.
             </p>
           </div>
         </div>

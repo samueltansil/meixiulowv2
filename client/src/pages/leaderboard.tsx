@@ -237,7 +237,7 @@ export default function Leaderboard() {
 
       <footer className="bg-white border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © 2024 WhyPals for Kids. All rights reserved.
+          © 2026 Edu Foundations. All rights reserved.
         </div>
       </footer>
     </div>
