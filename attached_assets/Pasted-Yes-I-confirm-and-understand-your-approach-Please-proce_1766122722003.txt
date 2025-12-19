@@ -1,0 +1,130 @@
+Yes, I confirm and understand your approach.
+Please proceed using the existing story and image architecture you already built.
+
+⚠️ IMPORTANT CLARIFICATION
+Any text examples shown below (dates, photographer names, wording) are EXAMPLES ONLY.
+All values must be fully editable via the admin panel.
+
+1️⃣ Hero Image Credit (Top Story Image)
+
+Add an optional text field in the Admin Story Editor:
+
+Field label: Hero Image Credit
+
+This field must be:
+
+Fully editable per story
+
+Stored in the story schema (optional)
+
+On the frontend:
+
+Display the hero image credit on the same line as the date
+
+Same font family, size, and color as the date
+
+Separated with a dot or divider
+
+Example only (not hardcoded):
+
+Dec 17, 2025 • Photo: CC Alex Abrams
+
+
+If the credit field is empty → display only the date
+
+2️⃣ Inline / Middle Image Credits (Inserted Images)
+
+Extend the existing inline image syntax:
+
+[IMAGE:url]
+
+
+to optionally support:
+
+[IMAGE:url|credit]
+
+
+The credit portion must be:
+
+Optional
+
+Backward compatible (existing content must not break)
+
+Admin Panel
+
+When inserting or editing an inline image:
+
+Provide an optional input field:
+
+Image Credit
+
+3️⃣ Frontend Display Rules (Very Important)
+
+Inline image credit must:
+
+Appear directly under the image
+
+Be center-aligned
+
+Use the same font, size, and color as the date
+
+Be visually subtle
+
+Have minimal vertical spacing
+
+The credit should visually “hug” the image
+
+Do NOT introduce a large margin or gap
+
+Example only:
+
+[IMAGE]
+Photo: CC Alex Abrams
+
+4️⃣ Text-to-Speech (Voice AI Reader)
+
+Confirm that photo credits are NOT read aloud
+
+Credits must be excluded using the same mechanism already used for:
+
+Dates
+
+Read time
+
+Images
+
+This applies to:
+
+Hero image credits
+
+Inline image credits
+
+5️⃣ Styling & Safety Constraints
+
+Reuse existing typography tokens
+
+Do NOT introduce new fonts or sizes
+
+All credit fields are optional
+
+No existing stories should break
+
+6️⃣ Final Checklist
+
+Admin panel allows editing:
+
+Story date
+
+Hero image credit
+
+Inline image credits
+
+Frontend:
+
+Hero credit appears beside date
+
+Inline credit appears centered and tight under image
+
+Voice reader skips all credits
+
+Please implement cleanly using the current codebase patterns.
