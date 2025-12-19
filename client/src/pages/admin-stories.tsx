@@ -149,11 +149,14 @@ function StoryForm({
   const [content, setContent] = useState(story?.content || "");
   const [category, setCategory] = useState(story?.category || "Science");
   const [thumbnail, setThumbnail] = useState(story?.thumbnail || "");
+  const [thumbnailCredit, setThumbnailCredit] = useState((story as any)?.thumbnailCredit || "");
   const [readTime, setReadTime] = useState(story?.readTime || "3 min read");
   const [isFeatured, setIsFeatured] = useState(story?.isFeatured || false);
   const [isPublished, setIsPublished] = useState(story?.isPublished || false);
   const [isUploading, setIsUploading] = useState(false);
   const [isContentImageUploading, setIsContentImageUploading] = useState(false);
+  const [contentImageCredit, setContentImageCredit] = useState("");
+  const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentImageInputRef = useRef<HTMLInputElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -247,24 +250,9 @@ function StoryForm({
       }
 
       const { imageUrl } = await uploadRes.json();
-      
-      const textarea = contentTextareaRef.current;
-      if (textarea) {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const imageTag = `[IMAGE:${imageUrl}]`;
-        const newContent = content.substring(0, start) + imageTag + content.substring(end);
-        setContent(newContent);
-        setTimeout(() => {
-          textarea.focus();
-          const newCursorPos = start + imageTag.length;
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }, 0);
-      } else {
-        setContent(content + `\n[IMAGE:${imageUrl}]\n`);
-      }
-      
-      toast({ title: "Image inserted!" });
+      setPendingImageUrl(imageUrl);
+      setContentImageCredit("");
+      toast({ title: "Image uploaded! Add optional credit below." });
     } catch (error) {
       console.error('Upload error:', error);
       toast({ title: "Error", description: "Failed to upload image", variant: "destructive" });
@@ -276,6 +264,33 @@ function StoryForm({
     }
   };
 
+  const insertImageWithCredit = () => {
+    if (!pendingImageUrl) return;
+    
+    const imageTag = contentImageCredit 
+      ? `[IMAGE:${pendingImageUrl}|${contentImageCredit}]`
+      : `[IMAGE:${pendingImageUrl}]`;
+    
+    const textarea = contentTextareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newContent = content.substring(0, start) + imageTag + content.substring(end);
+      setContent(newContent);
+      setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = start + imageTag.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    } else {
+      setContent(content + `\n${imageTag}\n`);
+    }
+    
+    setPendingImageUrl(null);
+    setContentImageCredit("");
+    toast({ title: "Image inserted!" });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
@@ -285,6 +300,7 @@ function StoryForm({
       content,
       category,
       thumbnail,
+      thumbnailCredit: thumbnailCredit || null,
       readTime,
       isFeatured,
       isPublished,
@@ -369,7 +385,37 @@ function StoryForm({
           required
           data-testid="input-story-content"
         />
-        <p className="text-xs text-muted-foreground">Click cursor position, then "Insert Image" to add inline images. Format: [IMAGE:url]</p>
+        <p className="text-xs text-muted-foreground">Click cursor position, then "Insert Image" to add inline images. Format: [IMAGE:url] or [IMAGE:url|credit]</p>
+        
+        {pendingImageUrl && (
+          <div className="mt-3 p-4 bg-muted rounded-lg border">
+            <div className="flex items-center gap-3 mb-3">
+              <img src={pendingImageUrl} alt="Pending" className="w-20 h-14 object-cover rounded" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Image uploaded</p>
+                <p className="text-xs text-muted-foreground">Add optional credit before inserting</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contentImageCredit" className="text-sm">Image Credit (optional)</Label>
+              <Input 
+                id="contentImageCredit"
+                value={contentImageCredit} 
+                onChange={(e) => setContentImageCredit(e.target.value)}
+                placeholder="e.g. Photo: CC Alex Abrams"
+                data-testid="input-content-image-credit"
+              />
+            </div>
+            <div className="flex gap-2 mt-3">
+              <Button type="button" size="sm" onClick={insertImageWithCredit}>
+                Insert Image
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setPendingImageUrl(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -425,6 +471,17 @@ function StoryForm({
               <img src={thumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" />
             </div>
           )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="thumbnailCredit">Hero Image Credit (optional)</Label>
+          <Input 
+            id="thumbnailCredit"
+            value={thumbnailCredit} 
+            onChange={(e) => setThumbnailCredit(e.target.value)}
+            placeholder="e.g. Photo: CC Alex Abrams"
+            data-testid="input-story-thumbnail-credit"
+          />
+          <p className="text-xs text-muted-foreground">Displays next to the date on the story page</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="readTime">Read Time</Label>

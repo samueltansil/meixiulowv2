@@ -163,6 +163,7 @@ var stories = (0, import_pg_core.pgTable)("stories", {
   content: (0, import_pg_core.text)("content").notNull(),
   category: (0, import_pg_core.varchar)("category").notNull(),
   thumbnail: (0, import_pg_core.text)("thumbnail").notNull(),
+  thumbnailCredit: (0, import_pg_core.text)("thumbnail_credit"),
   readTime: (0, import_pg_core.varchar)("read_time").notNull(),
   isFeatured: (0, import_pg_core.boolean)("is_featured").default(false).notNull(),
   isPublished: (0, import_pg_core.boolean)("is_published").default(false).notNull(),

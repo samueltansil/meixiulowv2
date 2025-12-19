@@ -12,30 +12,34 @@ import { useQuery } from "@tanstack/react-query";
 import type { Story, StoryGame } from "@shared/schema";
 import { format } from "date-fns";
 
-const IMAGE_TAG_REGEX = /\[IMAGE:([^\]]+)\]/g;
-const FULL_IMAGE_TAG_REGEX = /^\[IMAGE:([^\]]+)\]$/;
+const IMAGE_TAG_REGEX = /\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]/g;
+const FULL_IMAGE_TAG_REGEX = /^\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]$/;
 
 function isImageParagraph(text: string): boolean {
   return FULL_IMAGE_TAG_REGEX.test(text.trim());
 }
 
-function getImageUrl(text: string): string | null {
+function getImageData(text: string): { url: string; credit?: string } | null {
   const match = text.trim().match(FULL_IMAGE_TAG_REGEX);
-  return match ? match[1] : null;
+  if (!match) return null;
+  return { url: match[1], credit: match[2] || undefined };
 }
 
 function removeImageTags(text: string): string {
   return text.replace(IMAGE_TAG_REGEX, '').trim();
 }
 
-function InlineImage({ url }: { url: string }) {
+function InlineImage({ url, credit }: { url: string; credit?: string }) {
   return (
-    <div className="my-6 flex justify-center">
+    <div className="my-6 flex flex-col items-center">
       <img 
         src={url} 
         alt="Story illustration" 
         className="max-w-full h-auto rounded-xl shadow-lg max-h-96 object-contain"
       />
+      {credit && (
+        <span className="text-sm text-muted-foreground mt-1">{credit}</span>
+      )}
     </div>
   );
 }
@@ -329,6 +333,12 @@ export default function StoryPage() {
                 {displayDate}
               </span>
             )}
+            {(article as any).thumbnailCredit && (
+              <span className="flex items-center gap-1">
+                <span className="text-muted-foreground/50">•</span>
+                {(article as any).thumbnailCredit}
+              </span>
+            )}
           </div>
 
           <div className="mb-8 p-4 bg-gradient-to-r from-primary/10 via-secondary/10 to-primary/10 rounded-2xl border border-primary/20 shadow-sm">
@@ -416,9 +426,9 @@ export default function StoryPage() {
 
           <div className="prose prose-lg max-w-none" data-testid="story-content">
             {paragraphs.map((paragraph, index) => {
-              const imageUrl = getImageUrl(paragraph);
-              if (imageUrl) {
-                return <InlineImage key={index} url={imageUrl} />;
+              const imageData = getImageData(paragraph);
+              if (imageData) {
+                return <InlineImage key={index} url={imageData.url} credit={imageData.credit} />;
               }
               
               const ttsIndex = paragraphToTTSIndex.get(index);

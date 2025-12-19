@@ -109,6 +109,7 @@ export const stories = pgTable("stories", {
   content: text("content").notNull(),
   category: varchar("category").notNull(),
   thumbnail: text("thumbnail").notNull(),
+  thumbnailCredit: text("thumbnail_credit"),
   readTime: varchar("read_time").notNull(),
   isFeatured: boolean("is_featured").default(false).notNull(),
   isPublished: boolean("is_published").default(false).notNull(),
