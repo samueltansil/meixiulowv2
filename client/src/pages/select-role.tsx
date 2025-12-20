@@ -4,14 +4,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import logo from "@assets/whypals-logo.png";
 import { GraduationCap, BookOpen, Loader2, CheckCircle2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function SelectRole() {
   const { user, setRole, isSettingRole, isLoading } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const [showTeacherRestricted, setShowTeacherRestricted] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -23,6 +33,16 @@ export default function SelectRole() {
   }, [user, isLoading, navigate]);
 
   const handleRoleSelect = async (role: 'teacher' | 'student') => {
+    if (role === 'teacher') {
+      const allowedEmails = ['admin@whypals.com', 'samueljuliustansil@gmail.com'];
+      const isAllowed = user?.email && allowedEmails.includes(user.email);
+      
+      if (!isAllowed) {
+        setShowTeacherRestricted(true);
+        return;
+      }
+    }
+
     try {
       await setRole(role);
       toast({
@@ -168,6 +188,20 @@ export default function SelectRole() {
           </motion.div>
         </div>
       </motion.div>
+
+      <AlertDialog open={showTeacherRestricted} onOpenChange={setShowTeacherRestricted}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Teacher Role Under Development</AlertDialogTitle>
+            <AlertDialogDescription>
+              The Teacher role is currently under development. Please check back later for updates.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowTeacherRestricted(false)}>Got it</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

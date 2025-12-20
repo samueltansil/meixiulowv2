@@ -35,6 +35,7 @@ export default function Settings() {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [showTeacherConfirm, setShowTeacherConfirm] = useState(false);
+  const [showTeacherRestricted, setShowTeacherRestricted] = useState(false);
   
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showNotificationsDialog, setShowNotificationsDialog] = useState(false);
@@ -123,7 +124,14 @@ export default function Settings() {
 
   const handleTeacherClick = () => {
     if (currentUser?.userRole === 'student') {
-      setShowTeacherConfirm(true);
+      const allowedEmails = ['admin@whypals.com', 'samueljuliustansil@gmail.com'];
+      const isAllowed = currentUser?.email && allowedEmails.includes(currentUser.email);
+      
+      if (!isAllowed) {
+        setShowTeacherRestricted(true);
+      } else {
+        setShowTeacherConfirm(true);
+      }
     }
   };
 
@@ -693,6 +701,20 @@ export default function Settings() {
             <AlertDialogAction onClick={confirmTeacherChange} className="bg-green-600 hover:bg-green-700">
               Yes, Become a Teacher
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showTeacherRestricted} onOpenChange={setShowTeacherRestricted}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Teacher Role Under Development</AlertDialogTitle>
+            <AlertDialogDescription>
+              The Teacher role is currently under development. Please check back later for updates.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowTeacherRestricted(false)}>Got it</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
