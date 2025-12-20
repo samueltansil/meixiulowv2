@@ -23,28 +23,55 @@ export default function About() {
 
       <main className="container mx-auto px-4 py-12 flex-grow">
         <div className="max-w-4xl mx-auto space-y-16">
-          {/* What is WhyPals */}
+          {/* About Why Pals */}
           <section className="space-y-6 text-center">
-            <h1 className="font-heading text-4xl md:text-5xl font-bold text-primary">What is WhyPals?</h1>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              [Write about WhyPals here. Example: WhyPals is a fun and interactive learning platform designed for kids...]
-            </p>
+            <h1 className="font-heading text-4xl md:text-5xl font-bold text-primary">About Why Pals</h1>
+            <div className="text-xl text-muted-foreground leading-relaxed space-y-4">
+              <p>The world is full of big questions.</p>
+              <p>Why are prices going up? Why do countries argue? Why do people protest? Why does the weather feel different these days?</p>
+              <p>Kids notice these things. They hear bits and pieces. And naturally, they ask… why.</p>
+              <p className="font-medium text-primary">That’s where Why Pals comes in.</p>
+            </div>
           </section>
 
-          {/* Our Team */}
+          {/* What Is Why Pals? */}
           <section className="space-y-6 text-center">
-            <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary">Our Team</h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              [Write about your team here. Example: We are a group of passionate educators and developers...]
-            </p>
+            <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary">What Is Why Pals?</h2>
+            <div className="text-xl text-muted-foreground leading-relaxed space-y-4">
+              <p>Why Pals is a place where kids learn about the world by exploring real things that are happening around them.</p>
+              <p>We turn everyday events into simple stories that help children understand new ideas, build world knowledge, and practise important skills like curiosity, thinking, and asking good questions.</p>
+              <p>Why Pals helps kids go one step further — from what is happening to asking why.</p>
+            </div>
           </section>
 
-          {/* Our Mission */}
+          {/* What We Do Here */}
           <section className="space-y-6 text-center">
-            <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary">Our Mission</h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              [Write about your mission here. Example: Our mission is to make learning accessible and enjoyable for everyone...]
-            </p>
+            <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary">What We Do Here</h2>
+            <div className="text-xl text-muted-foreground leading-relaxed space-y-4">
+              <p>At Why Pals, we:</p>
+              <ul className="list-none space-y-2">
+                <li>Explain current affairs using simple, original language</li>
+                <li>Help kids see how world events connect to everyday life</li>
+                <li>Show that many issues don’t have just one right answer</li>
+                <li>Encourage curiosity, empathy, and thinking out loud</li>
+              </ul>
+              <p className="italic mt-4">Every story ends with questions, because thinking doesn’t stop at reading.</p>
+            </div>
+          </section>
+
+          {/* What We Believe */}
+          <section className="space-y-6 text-center">
+            <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary">What We Believe</h2>
+            <div className="text-xl text-muted-foreground leading-relaxed space-y-4">
+              <p>We believe:</p>
+              <ul className="list-none space-y-2">
+                <li>Curiosity is a superpower</li>
+                <li>Questions matter more than quick answers</li>
+                <li>Calm explanations build confidence</li>
+                <li>Kids are capable of deep thinking</li>
+              </ul>
+              <p className="font-medium text-primary mt-6">The world can feel big and confusing. Understanding it shouldn’t be.</p>
+            </div>
           </section>
         </div>
       </main>
