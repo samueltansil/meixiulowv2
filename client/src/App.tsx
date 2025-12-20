@@ -27,6 +27,7 @@ import VerifyTeacher from "@/pages/verify-teacher";
 import Register from "@/pages/register";
 import Login from "@/pages/login";
 import SelectRole from "@/pages/select-role";
+import About from "@/pages/about";
 import { useAuth } from "@/hooks/useAuth";
 
 function LoadingScreen() {
@@ -77,6 +78,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/about" component={About} />
       <Route path="/games" component={Games} />
       <Route path="/game/:id" component={GamePreview} />
       <Route path="/videos" component={Videos} />

@@ -336,7 +336,7 @@ export default function Teachers() {
               <span className="font-heading text-xl font-bold text-muted-foreground">WhyPals</span>
             </div>
             <div className="flex gap-8 text-sm font-semibold text-muted-foreground">
-              <a href="#" className="hover:text-primary transition-colors">About Us</a>
+              <Link href="/about" className="hover:text-primary transition-colors">About Us</Link>
               <a href="#" className="hover:text-primary transition-colors">Contact</a>
             </div>
             <p className="text-xs text-muted-foreground/50">
