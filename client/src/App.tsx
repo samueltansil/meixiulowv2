@@ -28,6 +28,7 @@ import Register from "@/pages/register";
 import Login from "@/pages/login";
 import SelectRole from "@/pages/select-role";
 import About from "@/pages/about";
+import Contact from "@/pages/contact";
 import { useAuth } from "@/hooks/useAuth";
 
 function LoadingScreen() {
@@ -60,6 +61,8 @@ function Router() {
       <Switch>
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
+        <Route path="/about" component={About} />
+        <Route path="/contact" component={Contact} />
         <Route path="/" component={Landing} />
         <Route component={Landing} />
       </Switch>
@@ -79,6 +82,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/about" component={About} />
+      <Route path="/contact" component={Contact} />
       <Route path="/games" component={Games} />
       <Route path="/game/:id" component={GamePreview} />
       <Route path="/videos" component={Videos} />
