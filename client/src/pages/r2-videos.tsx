@@ -91,7 +91,6 @@ export default function R2Videos() {
             <Link href="/videos" className="hover:text-primary transition-colors">Videos</Link>
             <Link href="/r2-videos" className="text-primary transition-colors">My Videos</Link>
             <Link href="/games" className="hover:text-primary transition-colors">Games</Link>
-            <Link href="/teachers" className="hover:text-primary transition-colors">Marketplace</Link>
           </div>
         </div>
       </nav>

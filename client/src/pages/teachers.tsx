@@ -36,7 +36,6 @@ export default function Teachers() {
     { href: "/", label: "Home", icon: Home },
     { href: "/videos", label: "Videos", icon: Play },
     { href: "/games", label: "Games", icon: Gamepad2 },
-    { href: "/teachers", label: "Marketplace", icon: GraduationCap },
   ];
 
   const isTeacher = currentUser?.userRole === 'teacher';

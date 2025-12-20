@@ -228,7 +228,6 @@ export default function GamePreview() {
             <Link href="/" className="hover:text-primary transition-colors">Home</Link>
             <Link href="/videos" className="hover:text-primary transition-colors">Videos</Link>
             <Link href="/games" className="text-primary transition-colors">Games</Link>
-            <Link href="/teachers" className="hover:text-primary transition-colors">Marketplace</Link>
           </div>
 
           <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-full" data-testid="points-tracker">

@@ -55,9 +55,9 @@ export default function VerifyTeacher() {
       </nav>
 
       <main className="flex-grow container mx-auto px-4 py-8 max-w-3xl">
-        <Link href="/teachers">
+        <Link href="/">
           <Button variant="ghost" className="mb-6 gap-2">
-            <ArrowLeft className="w-4 h-4" /> Back to Marketplace
+            <ArrowLeft className="w-4 h-4" /> Back to Home
           </Button>
         </Link>
 

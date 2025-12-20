@@ -160,7 +160,6 @@ export default function Settings() {
     { href: "/", label: "Home", icon: Home },
     { href: "/videos", label: "Videos", icon: Play },
     { href: "/games", label: "Games", icon: Gamepad2 },
-    { href: "/teachers", label: "Resource Marketplace", icon: GraduationCap },
   ];
 
   const handleMobileSearchToggle = () => {
@@ -185,7 +184,6 @@ export default function Settings() {
              <Link href="/" className="hover:text-primary transition-colors">Home</Link>
              <Link href="/videos" className="hover:text-primary transition-colors">Videos</Link>
              <Link href="/games" className="hover:text-primary transition-colors">Games</Link>
-             <Link href="/teachers" className="hover:text-primary transition-colors">Marketplace</Link>
           </div>
 
           <div className="flex items-center gap-4">
