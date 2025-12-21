@@ -160,36 +160,30 @@ export type InsertStory = typeof stories.$inferInsert;
 export type Story = typeof stories.$inferSelect;
 
 export const insertVideoSchema = createInsertSchema(videos).omit({
-  id: true,
   createdAt: true,
 });
 
 export const updateVideoSchema = createInsertSchema(videos).omit({
-  id: true,
   createdAt: true,
   uploadedBy: true,
   views: true,
 }).partial();
 
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
-  id: true,
   createdAt: true,
 });
 
 export const insertR2VideoMetadataSchema = createInsertSchema(r2VideoMetadata).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 });
 
 export const insertStorySchema = createInsertSchema(stories).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 });
 
 export const updateStorySchema = createInsertSchema(stories).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 }).partial();
@@ -221,13 +215,11 @@ export type InsertStoryGame = typeof storyGames.$inferInsert;
 export type StoryGame = typeof storyGames.$inferSelect;
 
 export const insertStoryGameSchema = createInsertSchema(storyGames).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 });
 
 export const updateStoryGameSchema = createInsertSchema(storyGames).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 }).partial();
@@ -320,14 +312,12 @@ export type InsertCourseworkItem = typeof courseworkItems.$inferInsert;
 export type CourseworkItem = typeof courseworkItems.$inferSelect;
 
 export const insertCourseworkItemSchema = createInsertSchema(courseworkItems).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
   salesCount: true,
 });
 
 export const updateCourseworkItemSchema = createInsertSchema(courseworkItems).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
   teacherId: true,
