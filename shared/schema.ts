@@ -67,9 +67,12 @@ export const videos = pgTable("videos", {
   category: varchar("category").notNull(),
   views: integer("views").default(0).notNull(),
   isFeatured: boolean("is_featured").default(false).notNull(),
+  linkedStoryTitle: varchar("linked_story_title", { length: 255 }),
   uploadedBy: varchar("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_videos_linked_title").on(table.linkedStoryTitle),
+]);
 
 export const subscriptions = pgTable("subscriptions", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),

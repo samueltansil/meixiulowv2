@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUploadField } from "@/components/ui/image-upload-field";
 import logo from "@assets/whypals-logo.png";
 import type { Video } from "@shared/schema";
 
@@ -143,6 +144,7 @@ function VideoForm({
   const [videoUrl, setVideoUrl] = useState(video?.videoUrl || "");
   const [category, setCategory] = useState(video?.category || "Science");
   const [isFeatured, setIsFeatured] = useState(video?.isFeatured || false);
+  const [linkedStoryTitle, setLinkedStoryTitle] = useState(video?.linkedStoryTitle || "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,6 +156,7 @@ function VideoForm({
       videoUrl,
       category,
       isFeatured,
+      linkedStoryTitle: linkedStoryTitle || null,
     });
   };
 
@@ -211,21 +214,27 @@ function VideoForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="thumbnail">Thumbnail URL</Label>
+        <Label htmlFor="linkedStoryTitle">Linked Story Title (for story connection)</Label>
         <Input 
-          id="thumbnail"
-          value={thumbnail} 
-          onChange={(e) => setThumbnail(e.target.value)}
-          placeholder="https://..."
-          required
-          data-testid="input-video-thumbnail"
+          id="linkedStoryTitle"
+          value={linkedStoryTitle} 
+          onChange={(e) => setLinkedStoryTitle(e.target.value)}
+          placeholder="Enter the exact story title to link this video"
+          data-testid="input-video-linked-story"
         />
-        {thumbnail && (
-          <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border">
-            <img src={thumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" />
-          </div>
-        )}
+        <p className="text-xs text-muted-foreground">Leave empty if not linked to a specific story</p>
       </div>
+
+      <ImageUploadField 
+        label="Thumbnail URL"
+        value={thumbnail}
+        onChange={setThumbnail}
+        placeholder="https://..."
+        token={getStoredToken()}
+        uploadEndpoint="/api/admin/upload/video-thumbnail"
+        testid="input-video-thumbnail"
+        previewClassName="w-32 h-20"
+      />
 
       <div className="space-y-2">
         <Label htmlFor="videoUrl">Video URL</Label>

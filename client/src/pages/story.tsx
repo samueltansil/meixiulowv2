@@ -9,7 +9,7 @@ import { useMemo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
-import type { Story, StoryGame } from "@shared/schema";
+import type { Story, StoryGame, Video } from "@shared/schema";
 import { format } from "date-fns";
 
 const IMAGE_TAG_REGEX = /\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]/g;
@@ -161,6 +161,25 @@ export default function StoryPage() {
     queryKey: [`/api/stories/${params.id}`],
     enabled: !!params.id,
   });
+
+  const { data: videos = [] } = useQuery<Video[]>({
+    queryKey: ["/api/videos"],
+  });
+
+  const relatedVideo = useMemo(() => {
+    if (!article?.title || videos.length === 0) return null;
+    const normalize = (str: string) => str
+      .trim()
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ');
+    const normalizedStoryTitle = normalize(article.title);
+    return videos.find(video => {
+      if (!video.linkedStoryTitle) return false;
+      const normalizedVideoTitle = normalize(video.linkedStoryTitle);
+      return normalizedVideoTitle === normalizedStoryTitle;
+    }) || null;
+  }, [article?.title, videos]);
 
   const { data: games = [] } = useQuery<StoryGame[]>({
     queryKey: ["/api/games"],
@@ -463,6 +482,48 @@ export default function StoryPage() {
             </div>
           </div>
 
+          {/* Related Video Section */}
+          {relatedVideo && (
+            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-blue-900/20 rounded-3xl border-2 border-blue-200 dark:border-blue-800 shadow-lg">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-800 flex items-center justify-center">
+                  <Play className="w-6 h-6 text-blue-600 dark:text-blue-300 fill-current" />
+                </div>
+                <div>
+                  <h3 className="font-heading text-xl font-bold text-blue-700 dark:text-blue-300">Watch a Related Video!</h3>
+                  <p className="text-sm text-blue-600/80 dark:text-blue-400">Deepen your understanding with this video</p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col md:flex-row gap-6 items-center">
+                {relatedVideo.thumbnail && (
+                  <div className="relative w-full md:w-48 flex-shrink-0">
+                    <img 
+                      src={relatedVideo.thumbnail} 
+                      alt={relatedVideo.title}
+                      className="w-full h-32 object-cover rounded-xl shadow-md"
+                    />
+                    <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center shadow-lg">
+                      <Play className="w-5 h-5 text-white fill-current" />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex-grow text-center md:text-left">
+                  <h4 className="font-heading text-2xl font-bold text-foreground mb-2">{relatedVideo.title}</h4>
+                  <p className="text-muted-foreground mb-4">{relatedVideo.description}</p>
+                  <Link href={`/video/${relatedVideo.id}`}>
+                    <Button className="rounded-full gap-2 shadow-md bg-blue-600 hover:bg-blue-700" data-testid="button-watch-related-video">
+                      <Play className="w-4 h-4 fill-current" />
+                      Watch Video
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Related Game Section */}
           {relatedGame && (
             <div className="mt-8 p-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-900/20 dark:via-teal-900/20 dark:to-emerald-900/20 rounded-3xl border-2 border-emerald-200 dark:border-emerald-800 shadow-lg">
               <div className="flex items-center gap-3 mb-4">

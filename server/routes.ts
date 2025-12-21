@@ -748,8 +748,34 @@ export async function registerRoutes(
     }
   });
 
+  // Image upload for video thumbnails - admin only
+  app.post('/api/admin/upload/video-thumbnail', upload.single('image'), async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      const { key } = await uploadImageToR2(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        'video-thumbnails'
+      );
+      
+      const imageUrl = `/api/images/${key}`;
+      res.json({ imageUrl, key });
+    } catch (error) {
+      console.error("Error uploading video thumbnail:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
   // Allowed image folders for access
-  const ALLOWED_IMAGE_FOLDERS = ['story-thumbnails', 'game-images', 'story-content'];
+  const ALLOWED_IMAGE_FOLDERS = ['story-thumbnails', 'game-images', 'story-content', 'video-thumbnails'];
 
   app.get('/api/images/:key(*)', async (req, res) => {
     try {
