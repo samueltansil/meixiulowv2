@@ -26,7 +26,7 @@ import multer from "multer";
 const BCRYPT_ROUNDS = 12;
 
 const MURF_API_KEY = process.env.MURF_API_KEY;
-const MURF_VOICE_ID = process.env.MURF_VOICE_ID || "en-US-ryan";
+const MURF_VOICE_ID = process.env.MURF_VOICE_ID || "en-US-natalie";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 let timestampsEndpointAvailable = true;
 let timestampsLastChecked = 0;
