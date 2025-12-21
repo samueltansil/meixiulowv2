@@ -1148,7 +1148,7 @@ export async function registerRoutes(
             voiceId: MURF_VOICE_ID,
             format: 'MP3',
             encodeAsBase64: true,
-            rate: -15 // Slower speed for kids
+            rate: -25 // Very slow speed for kids
           }),
         }
       );
