@@ -1120,18 +1120,18 @@ export async function registerRoutes(
       const audioKey = `tts/${hash}.mp3`;
       const jsonKey = `tts/${hash}.json`;
 
-      // Check if already exists
-      const existingAudio = await getFileFromR2(audioKey);
-      const existingJson = await getFileFromR2(jsonKey);
+      // Check if already exists - DISABLED to allow overwrite
+      // const existingAudio = await getFileFromR2(audioKey);
+      // const existingJson = await getFileFromR2(jsonKey);
 
-      if (existingAudio && existingJson) {
-        return res.json({ 
-          success: true, 
-          cached: true,
-          audioUrl: `/api/text-to-speech/audio/${hash}`,
-          jsonUrl: `/api/text-to-speech/json/${hash}`
-        });
-      }
+      // if (existingAudio && existingJson) {
+      //   return res.json({ 
+      //     success: true, 
+      //     cached: true,
+      //     audioUrl: `/api/text-to-speech/audio/${hash}`,
+      //     jsonUrl: `/api/text-to-speech/json/${hash}`
+      //   });
+      // }
 
       // If not exists, generate from Murf AI
       console.log("Generating audio for text hash:", hash);
