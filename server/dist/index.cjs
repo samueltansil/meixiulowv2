@@ -795,6 +795,14 @@ async function registerRoutes(httpServer2, app2) {
   });
   app2.post("/api/admin/login", async (req, res) => {
     try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Please log in to your account first" });
+      }
+      const user = await storage.getUser(req.session.userId);
+      const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com"];
+      if (!user || !user.email || !ALLOWED_ADMIN_EMAILS.includes(user.email)) {
+        return res.status(403).json({ message: "Access denied: Unauthorized account" });
+      }
       const { password } = req.body;
       if (!password) {
         return res.status(400).json({ message: "Password is required" });
