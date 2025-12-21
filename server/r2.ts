@@ -113,6 +113,47 @@ export async function uploadImageToR2(file: Buffer, filename: string, contentTyp
   return { key };
 }
 
+export async function uploadFileToR2(file: Buffer, key: string, contentType: string): Promise<void> {
+  if (!R2_BUCKET_NAME) {
+    throw new Error("R2_BUCKET_NAME not configured");
+  }
+
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+    Body: file,
+    ContentType: contentType,
+  });
+
+  await r2Client.send(command);
+}
+
+export async function getFileFromR2(key: string): Promise<Buffer | null> {
+  if (!R2_BUCKET_NAME) {
+    return null;
+  }
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+    });
+
+    const response = await r2Client.send(command);
+    if (!response.Body) return null;
+    
+    // Convert stream to buffer
+    const byteArray = await response.Body.transformToByteArray();
+    return Buffer.from(byteArray);
+  } catch (error: any) {
+    if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    console.error("Error getting file from R2:", error);
+    return null;
+  }
+}
+
 export async function getImageSignedUrl(key: string, expiresIn: number = 86400): Promise<string> {
   if (!R2_BUCKET_NAME) {
     throw new Error("R2_BUCKET_NAME not configured");
