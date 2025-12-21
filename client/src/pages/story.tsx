@@ -63,6 +63,12 @@ function WordHighlightedText({
     return <span>{text}</span>;
   }
 
+  const shouldAddSpace = (currentIdx: number, allWords: WordTiming[]) => {
+    if (currentIdx >= allWords.length - 1) return false;
+    const nextWord = allWords[currentIdx + 1].word;
+    return !/^[.,!?:;)]/.test(nextWord);
+  };
+
   return (
     <span>
       {words.map((wordData, idx) => (
@@ -76,7 +82,7 @@ function WordHighlightedText({
           >
             {wordData.word}
           </span>
-          {idx < words.length - 1 && ' '}
+          {shouldAddSpace(idx, words) && ' '}
         </span>
       ))}
     </span>

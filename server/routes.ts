@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
@@ -20,13 +20,13 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
-import { listVideos, getVideoSignedUrl, getImageUploadUrl, getImageSignedUrl, uploadImageToR2 } from "./r2";
+import { listVideos, getVideoSignedUrl, getImageUploadUrl, getImageSignedUrl, uploadImageToR2, uploadFileToR2, getFileFromR2 } from "./r2";
 import multer from "multer";
 
 const BCRYPT_ROUNDS = 12;
 
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"; // "Bella" - friendly female voice
+const MURF_API_KEY = process.env.MURF_API_KEY;
+const MURF_VOICE_ID = process.env.MURF_VOICE_ID || "en-US-ryan";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 let timestampsEndpointAvailable = true;
 let timestampsLastChecked = 0;
@@ -848,7 +848,7 @@ export async function registerRoutes(
       }
 
       const storyUpdateData = result.data as z.infer<typeof updateStorySchema>;
-      const updateData: z.infer<typeof updateStorySchema> & { publishedAt?: Date } = { ...storyUpdateData };
+      const updateData: any = { ...storyUpdateData };
       if (storyUpdateData.isPublished && !existing.isPublished) {
         updateData.publishedAt = new Date();
       }
@@ -1100,136 +1100,154 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/text-to-speech', async (req, res) => {
+  app.post('/api/admin/generate-audio', async (req: any, res) => {
     try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
       const { text } = req.body;
-      
       if (!text || typeof text !== 'string') {
         return res.status(400).json({ message: "Text is required" });
       }
 
-      if (!ELEVENLABS_API_KEY) {
-        return res.status(500).json({ message: "ElevenLabs API key not configured" });
+      if (!MURF_API_KEY) {
+        return res.status(500).json({ message: "Murf API key not configured" });
       }
 
-      const shouldTryTimestamps = timestampsEndpointAvailable || 
-        (Date.now() - timestampsLastChecked > TIMESTAMPS_RETRY_INTERVAL);
-      
-      if (shouldTryTimestamps) {
-        const timestampsResponse = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}/with-timestamps`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'xi-api-key': ELEVENLABS_API_KEY,
-            },
-            body: JSON.stringify({
-              text,
-              model_id: 'eleven_multilingual_v2',
-              voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75,
-                style: 0.5,
-                use_speaker_boost: true,
-              },
-            }),
-          }
-        );
+      // Generate hash of the text to use as key
+      const hash = createHash('md5').update(text).digest('hex');
+      const audioKey = `tts/${hash}.mp3`;
+      const jsonKey = `tts/${hash}.json`;
 
-        if (timestampsResponse.ok) {
-          const data = await timestampsResponse.json();
-          
-          const alignment = data.alignment || {};
-          const characters = alignment.characters || [];
-          const startTimes = alignment.character_start_times_seconds || [];
-          const endTimes = alignment.character_end_times_seconds || [];
-          
-          const words: { word: string; start: number; end: number }[] = [];
-          let currentWord = '';
-          let wordStart: number | null = null;
-          
-          for (let i = 0; i < characters.length; i++) {
-            const char = characters[i];
-            const isLastChar = i === characters.length - 1;
-            
-            if (char === ' ' || isLastChar) {
-              if (isLastChar && char !== ' ') {
-                currentWord += char;
-              }
-              if (currentWord && wordStart !== null) {
-                const wordEnd = char === ' ' ? endTimes[i - 1] : endTimes[i];
-                words.push({
-                  word: currentWord,
-                  start: wordStart,
-                  end: wordEnd
-                });
-              }
-              currentWord = '';
-              wordStart = null;
-            } else {
-              if (wordStart === null) {
-                wordStart = startTimes[i];
-              }
-              currentWord += char;
-            }
-          }
-          
-          const audioBase64 = data.audio_base64;
-          
-          return res.json({
-            audio: audioBase64,
-            words: words,
-            duration: endTimes.length > 0 ? endTimes[endTimes.length - 1] : 0,
-            hasWordTiming: words.length > 0
-          });
-        } else {
-          console.log("Timestamps endpoint returned", timestampsResponse.status, "- will retry in 5 minutes");
-          timestampsEndpointAvailable = false;
-          timestampsLastChecked = Date.now();
-        }
+      // Check if already exists
+      const existingAudio = await getFileFromR2(audioKey);
+      const existingJson = await getFileFromR2(jsonKey);
+
+      if (existingAudio && existingJson) {
+        return res.json({ 
+          success: true, 
+          cached: true,
+          audioUrl: `/api/text-to-speech/audio/${hash}`,
+          jsonUrl: `/api/text-to-speech/json/${hash}`
+        });
       }
-      
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
+
+      // If not exists, generate from Murf AI
+      console.log("Generating audio for text hash:", hash);
+      const timestampsResponse = await fetch(
+        `https://api.murf.ai/v1/speech/generate`,
         {
           method: 'POST',
           headers: {
-            'Accept': 'audio/mpeg',
             'Content-Type': 'application/json',
-            'xi-api-key': ELEVENLABS_API_KEY,
+            'api-key': MURF_API_KEY,
           },
           body: JSON.stringify({
             text,
-            model_id: 'eleven_multilingual_v2',
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75,
-              style: 0.5,
-              use_speaker_boost: true,
-            },
+            voiceId: MURF_VOICE_ID,
+            format: 'MP3',
+            encodeAsBase64: true,
+            rate: -15 // Slower speed for kids
           }),
         }
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("ElevenLabs API error:", errorText);
-        return res.status(response.status).json({ message: "Failed to generate speech" });
+      if (!timestampsResponse.ok) {
+        const errorText = await timestampsResponse.text();
+        console.error("Murf API error:", errorText);
+        
+        let errorMessage = "Failed to generate speech from Murf AI";
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.errorMessage) {
+            errorMessage = errorJson.errorMessage;
+          }
+        } catch (e) {
+          // Keep default message if parsing fails
+        }
+        
+        return res.status(timestampsResponse.status).json({ message: errorMessage });
       }
 
-      const audioBuffer = await response.arrayBuffer();
-      const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+      const data = await timestampsResponse.json();
       
+      // Process timestamps
+      // Murf returns wordDurations array with startMs and endMs
+      const wordDurations = data.wordDurations || [];
+      const words = wordDurations.map((w: any) => ({
+        word: w.word,
+        start: w.startMs / 1000,
+        end: w.endMs / 1000
+      }));
+      
+      const duration = data.audioLengthInSeconds || (words.length > 0 ? words[words.length - 1].end : 0);
+      const metadata = {
+        words,
+        duration,
+        hasWordTiming: words.length > 0,
+        text
+      };
+
+      // Upload to R2
+      if (!data.encodedAudio) {
+        throw new Error("No audio data received from Murf AI");
+      }
+
+      const audioBuffer = Buffer.from(data.encodedAudio, 'base64');
+      const jsonBuffer = Buffer.from(JSON.stringify(metadata));
+
+      await uploadFileToR2(audioBuffer, audioKey, 'audio/mpeg');
+      await uploadFileToR2(jsonBuffer, jsonKey, 'application/json');
+
       res.json({
-        audio: audioBase64,
-        words: [],
-        duration: 0,
-        hasWordTiming: false
+        success: true,
+        cached: false,
+        audioUrl: `/api/text-to-speech/audio/${hash}`,
+        jsonUrl: `/api/text-to-speech/json/${hash}`
       });
+
     } catch (error) {
       console.error("Error generating speech:", error);
       res.status(500).json({ message: "Failed to generate speech" });
+    }
+  });
+
+  // Public read-only endpoint that ONLY serves cached content
+  app.post('/api/text-to-speech', async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({ message: "Text is required" });
+      }
+
+      // Generate hash of the text to find key
+      const hash = createHash('md5').update(text).digest('hex');
+      const audioKey = `tts/${hash}.mp3`;
+      const jsonKey = `tts/${hash}.json`;
+
+      // Check if exists
+      const audioBuffer = await getFileFromR2(audioKey);
+      const jsonBuffer = await getFileFromR2(jsonKey);
+
+      if (!audioBuffer || !jsonBuffer) {
+        // DO NOT GENERATE - Return 404
+        return res.status(404).json({ message: "Audio not generated yet" });
+      }
+
+      const metadata = JSON.parse(jsonBuffer.toString());
+      const audioBase64 = audioBuffer.toString('base64');
+
+      res.json({
+        audio: audioBase64,
+        words: metadata.words,
+        duration: metadata.duration,
+        hasWordTiming: metadata.hasWordTiming
+      });
+
+    } catch (error) {
+      console.error("Error retrieving speech:", error);
+      res.status(500).json({ message: "Failed to retrieve speech" });
     }
   });
 
