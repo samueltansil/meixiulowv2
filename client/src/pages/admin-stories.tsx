@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Plus, Edit, Trash2, Eye, EyeOff, Star, ArrowLeft, Save, X, Upload, Loader2, Lock, Shield } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, EyeOff, Star, ArrowLeft, Save, X, Upload, Loader2, Lock, Shield, Volume2, CheckCircle, AlertCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,151 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 import logo from "@assets/whypals-logo.png";
 import type { Story } from "@shared/schema";
 
 const CATEGORIES = ["Science", "Nature", "Sports", "World", "Fun"];
 const ADMIN_TOKEN_KEY = 'newspals_admin_token';
+
+// Regex for matching image tags (Must match story.tsx logic)
+const IMAGE_TAG_REGEX = /\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]/g;
+const FULL_IMAGE_TAG_REGEX = /^\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]$/;
+
+function isImageParagraph(text: string): boolean {
+  return FULL_IMAGE_TAG_REGEX.test(text.trim());
+}
+
+function removeImageTags(text: string): string {
+  return text.replace(IMAGE_TAG_REGEX, '').trim();
+}
+
+function AudioGenerator({ content }: { content: string }) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
+  const [status, setStatus] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    if (!content) return;
+    
+    // 1. Confirm with user
+    if (!confirm("This will generate audio for all paragraphs using your API credits. Are you sure?")) {
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+    setStatus("Analyzing content...");
+    
+    // 2. Split and filter content (Exact same logic as story.tsx)
+    const rawParagraphs = content.split('\n\n');
+    const textParagraphs: string[] = [];
+    
+    rawParagraphs.forEach((p) => {
+      if (!isImageParagraph(p)) {
+        const cleaned = removeImageTags(p);
+        if (cleaned.length > 0) {
+          textParagraphs.push(cleaned);
+        }
+      }
+    });
+
+    if (textParagraphs.length === 0) {
+      setError("No valid text paragraphs found to generate audio for.");
+      setIsGenerating(false);
+      return;
+    }
+
+    setProgress({ current: 0, total: textParagraphs.length });
+    const token = getStoredToken();
+
+    // 3. Process each paragraph
+    for (let i = 0; i < textParagraphs.length; i++) {
+      const text = textParagraphs[i];
+      setStatus(`Generating audio for paragraph ${i + 1} of ${textParagraphs.length}...`);
+      
+      try {
+        const res = await fetch("/api/admin/generate-audio", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            ...(token ? { "x-admin-token": token } : {})
+          },
+          body: JSON.stringify({ text })
+        });
+        
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || "Unknown error");
+        }
+        
+      } catch (err: any) {
+        console.error(err);
+        setError(`Failed on paragraph ${i + 1}: ${err.message}`);
+        setIsGenerating(false);
+        return;
+      }
+      
+      setProgress({ current: i + 1, total: textParagraphs.length });
+    }
+
+    setStatus("Audio generation complete! All paragraphs are now cached.");
+    setIsGenerating(false);
+  };
+
+  return (
+    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Volume2 className="w-5 h-5 text-purple-600" />
+          <h3 className="font-heading font-semibold text-slate-900">Audio Generation</h3>
+        </div>
+        {!isGenerating && !progress && (
+          <Button 
+            type="button" 
+            variant="secondary" 
+            onClick={handleGenerate}
+            className="bg-purple-100 text-purple-700 hover:bg-purple-200"
+          >
+            Generate Audio (Manual Cost)
+          </Button>
+        )}
+      </div>
+      
+      <p className="text-sm text-slate-500 mb-4">
+        This will generate and cache audio for each paragraph using ElevenLabs/OpenAI. 
+        Only perform this once per story version to save credits.
+      </p>
+
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded text-sm flex items-center gap-2 mb-4">
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+
+      {(isGenerating || progress) && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs font-medium text-slate-600">
+            <span>{status}</span>
+            {progress && <span>{Math.round((progress.current / progress.total) * 100)}%</span>}
+          </div>
+          {progress && (
+            <Progress value={(progress.current / progress.total) * 100} className="h-2" />
+          )}
+          {progress && progress.current === progress.total && !isGenerating && (
+            <div className="flex items-center gap-2 text-green-600 text-sm mt-2 font-medium">
+              <CheckCircle className="w-4 h-4" />
+              Generation Complete
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function getStoredToken(): string | null {
   return sessionStorage.getItem(ADMIN_TOKEN_KEY);
@@ -418,6 +558,8 @@ function StoryForm({
           </div>
         )}
       </div>
+
+      <AudioGenerator content={content} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
