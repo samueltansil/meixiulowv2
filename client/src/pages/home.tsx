@@ -265,6 +265,11 @@ export default function Home() {
                         className="absolute inset-0 w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                      <div className="absolute top-4 left-4 flex items-center gap-2">
+                        <span className="bg-pink-100 text-pink-700 text-sm font-bold px-3 py-1.5 rounded-full shadow-lg">
+                          Weekly Theme
+                        </span>
+                      </div>
                     </div>
                   )}
                 </motion.div>
