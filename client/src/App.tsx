@@ -18,6 +18,7 @@ import AdminStories from "@/pages/admin-stories";
 import AdminVideos from "@/pages/admin-videos";
 import AdminGames from "@/pages/admin-games";
 import AdminTeachers from "@/pages/admin-teachers";
+import AdminBanners from "@/pages/admin-banners";
 import TeacherDashboard from "@/pages/teacher-dashboard";
 import Marketplace from "@/pages/marketplace";
 import CourseworkDetail from "@/pages/coursework-detail";
@@ -63,6 +64,11 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
+        <Route path="/admin/stories" component={AdminStories} />
+        <Route path="/admin/videos" component={AdminVideos} />
+        <Route path="/admin/games" component={AdminGames} />
+        <Route path="/admin/teachers" component={AdminTeachers} />
+        <Route path="/admin/banners" component={AdminBanners} />
         <Route path="/" component={Landing} />
         <Route component={Landing} />
       </Switch>
@@ -101,6 +107,7 @@ function Router() {
       <Route path="/admin/videos" component={AdminVideos} />
       <Route path="/admin/games" component={AdminGames} />
       <Route path="/admin/teachers" component={AdminTeachers} />
+      <Route path="/admin/banners" component={AdminBanners} />
       <Route component={NotFound} />
     </Switch>
   );
