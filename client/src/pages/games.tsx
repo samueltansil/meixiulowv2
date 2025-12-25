@@ -11,7 +11,7 @@ import { useState, useRef, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import type { StoryGame } from "@shared/schema";
+import type { StoryGame, Banner } from "@shared/schema";
 import ProfileButton from "@/components/ProfileButton";
 
 const GAME_TYPE_ICONS: Record<string, typeof Puzzle> = {
@@ -57,15 +57,24 @@ export default function Games() {
     },
   });
 
+  const { data: banners = [] } = useQuery<Banner[]>({
+    queryKey: ["/api/banners/active"],
+  });
+
+  const allFeaturedItems = [
+    ...featuredGames.map(g => ({ type: 'game' as const, data: g })),
+    ...banners.map(b => ({ type: 'banner' as const, data: b }))
+  ];
+
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
 
   useEffect(() => {
-    if (featuredGames.length <= 1) return;
+    if (allFeaturedItems.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentFeaturedIndex((prev) => (prev + 1) % featuredGames.length);
+      setCurrentFeaturedIndex((prev) => (prev + 1) % allFeaturedItems.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [featuredGames.length]);
+  }, [allFeaturedItems.length]);
 
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
@@ -198,55 +207,82 @@ export default function Games() {
       <main className="container mx-auto px-4 py-8 flex-grow">
         <ActivityTracker />
 
-        <div className="relative rounded-3xl overflow-hidden mb-8 h-40 md:h-52">
-          {featuredGames.length > 0 ? (
+        <div className="relative rounded-3xl overflow-hidden mb-8 h-[280px] md:h-[320px] bg-white shadow-lg">
+          {allFeaturedItems.length > 0 ? (
             <>
               <AnimatePresence mode="wait">
-                {featuredGames.map((game, index) => {
+                {allFeaturedItems.map((item, index) => {
                   if (index !== currentFeaturedIndex) return null;
-                  const GameIcon = GAME_TYPE_ICONS[game.gameType] || Gamepad2;
-                  const colorClass = GAME_TYPE_COLORS[game.gameType] || "bg-gray-100 text-gray-600";
-                  return (
-                    <motion.div
-                      key={game.id}
-                      initial={{ opacity: 0, x: 50 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -50 }}
-                      transition={{ duration: 0.4 }}
-                      className="absolute inset-0"
-                    >
-                      <Link href={`/game/${game.id}`} className="block h-full">
-                        <div className="relative w-full h-full cursor-pointer group">
-                          {game.thumbnail ? (
-                            <img src={game.thumbnail} alt={game.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className={`w-full h-full ${colorClass} flex items-center justify-center`}>
-                              <GameIcon className="w-24 h-24 opacity-30" />
+                  
+                  if (item.type === 'game') {
+                    const game = item.data;
+                    const GameIcon = GAME_TYPE_ICONS[game.gameType] || Gamepad2;
+                    const colorClass = GAME_TYPE_COLORS[game.gameType] || "bg-gray-100 text-gray-600";
+                    return (
+                      <motion.div
+                        key={`game-${game.id}`}
+                        initial={{ opacity: 0, x: 50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -50 }}
+                        transition={{ duration: 0.4 }}
+                        className="absolute inset-0"
+                      >
+                        <Link href={`/game/${game.id}`} className="block h-full">
+                          <div className="relative w-full h-full cursor-pointer group">
+                            {game.thumbnail ? (
+                              <img src={game.thumbnail} alt={game.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className={`w-full h-full ${colorClass} flex items-center justify-center`}>
+                                <GameIcon className="w-24 h-24 opacity-30" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+                            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+                              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${colorClass} mb-2`}>
+                                <GameIcon className="w-3 h-3" /> {game.gameType.toUpperCase()}
+                              </div>
+                              <h2 className="font-heading text-2xl md:text-4xl font-bold text-white mb-1">{game.title}</h2>
+                              <p className="text-white/80 text-sm md:text-base line-clamp-1">{game.description || "Play, Learn, and Win!"}</p>
                             </div>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-                          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                            <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${colorClass} mb-2`}>
-                              <GameIcon className="w-3 h-3" /> {game.gameType.toUpperCase()}
+                            <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg">
+                              <Trophy className="w-4 h-4" /> {game.pointsReward} pts
                             </div>
-                            <h2 className="font-heading text-2xl md:text-4xl font-bold text-white mb-1">{game.title}</h2>
-                            <p className="text-white/80 text-sm md:text-base line-clamp-1">{game.description || "Play, Learn, and Win!"}</p>
+                            <div className="absolute top-4 left-4 bg-primary text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg">
+                              <Sparkles className="w-4 h-4" /> Featured
+                            </div>
                           </div>
-                          <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg">
-                            <Trophy className="w-4 h-4" /> {game.pointsReward} pts
-                          </div>
-                          <div className="absolute top-4 left-4 bg-primary text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg">
-                            <Sparkles className="w-4 h-4" /> Featured
-                          </div>
-                        </div>
-                      </Link>
-                    </motion.div>
-                  );
+                        </Link>
+                      </motion.div>
+                    );
+                  } else {
+                    const banner = item.data;
+                    return (
+                      <motion.div
+                        key={`banner-${banner.id}`}
+                        initial={{ opacity: 0, x: 50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -50 }}
+                        transition={{ duration: 0.4 }}
+                        className="absolute inset-0 cursor-pointer"
+                        onClick={() => {
+                          // Handle banner click
+                          console.log("Banner clicked:", banner.title);
+                        }}
+                      >
+                         <img 
+                           src={banner.imageUrl} 
+                           alt={banner.title}
+                           className="w-full h-full object-cover"
+                         />
+                         <div className="absolute inset-0 bg-black/10 hover:bg-black/0 transition-colors" />
+                      </motion.div>
+                    );
+                  }
                 })}
               </AnimatePresence>
-              {featuredGames.length > 1 && (
+              {allFeaturedItems.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                  {featuredGames.map((_, index) => (
+                  {allFeaturedItems.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentFeaturedIndex(index)}

@@ -3,7 +3,7 @@ import scienceHero from "@assets/generated_images/science_category_illustration.
 import natureHero from "@assets/generated_images/nature_and_animals_category_illustration.png";
 import sportsHero from "@assets/generated_images/sports_and_fun_category_illustration.png";
 
-export type Category = "Science" | "Nature" | "Sports" | "World" | "Fun";
+export type Category = "Science" | "Nature" | "Sports" | "World" | "Fun" | "Weekly Theme";
 
 export interface Game {
   id: string;
@@ -28,6 +28,7 @@ export interface Article {
 }
 
 export const CATEGORIES: { id: Category; label: string; icon: any; color: string; hero?: string }[] = [
+  { id: "Weekly Theme", label: "Weekly Theme", icon: Sparkles, color: "bg-pink-100 text-pink-700" },
   { id: "Science", label: "Cool Science", icon: FlaskConical, color: "bg-blue-100 text-blue-700", hero: scienceHero },
   { id: "Nature", label: "Wild Nature", icon: Leaf, color: "bg-green-100 text-green-700", hero: natureHero },
   { id: "Sports", label: "Sports & Play", icon: Trophy, color: "bg-orange-100 text-orange-700", hero: sportsHero },

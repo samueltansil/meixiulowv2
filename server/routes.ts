@@ -13,10 +13,12 @@ import {
   updateStoryGameSchema, 
   insertCourseworkItemSchema, 
   updateCourseworkItemSchema,
+  insertBannerSchema,
   type InsertVideo, 
   type InsertStory, 
   type InsertStoryGame, 
-  type InsertCourseworkItem 
+  type InsertCourseworkItem,
+  type InsertBanner
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -774,8 +776,82 @@ export async function registerRoutes(
     }
   });
 
+  // Image upload for banners - admin only
+  app.post('/api/admin/upload/banner', upload.single('image'), async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      if (!req.file) return res.status(400).json({ message: "No image file provided" });
+      const { key } = await uploadImageToR2(req.file.buffer, req.file.originalname, req.file.mimetype, 'banners');
+      const imageUrl = `/api/images/${key}`;
+      res.json({ imageUrl, key });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to upload banner image" });
+    }
+  });
+
+  // Banners CRUD
+  app.get('/api/banners', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      const banners = await storage.getBanners();
+      res.json(banners);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch banners" });
+    }
+  });
+
+  app.get('/api/banners/active', async (req, res) => {
+    try {
+      const banners = await storage.getActiveBanners();
+      res.json(banners);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch active banners" });
+    }
+  });
+
+  app.post('/api/banners', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      
+      const result = insertBannerSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: fromZodError(result.error).message 
+        });
+      }
+
+      const banner = await storage.insertBanner(result.data as InsertBanner);
+      res.json(banner);
+    } catch (error) {
+      console.error("Error creating banner:", error);
+      res.status(500).json({ message: "Failed to create banner" });
+    }
+  });
+
+  app.delete('/api/banners/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      const id = parseInt(req.params.id);
+      await storage.deleteBanner(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete banner" });
+    }
+  });
+
+  app.patch('/api/banners/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      const id = parseInt(req.params.id);
+      const banner = await storage.updateBanner(id, req.body);
+      res.json(banner);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update banner" });
+    }
+  });
+
   // Allowed image folders for access
-  const ALLOWED_IMAGE_FOLDERS = ['story-thumbnails', 'game-images', 'story-content', 'video-thumbnails'];
+  const ALLOWED_IMAGE_FOLDERS = ['story-thumbnails', 'game-images', 'story-content', 'video-thumbnails', 'banners'];
 
   app.get('/api/images/:key(*)', async (req, res) => {
     try {

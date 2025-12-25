@@ -297,6 +297,22 @@ export const courseworkItems = pgTable("coursework_items", {
   index("idx_coursework_subject").on(table.subject),
 ]);
 
+export const banners = pgTable("banners", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  title: varchar("title", { length: 255 }).notNull(),
+  imageUrl: text("image_url").notNull(),
+  active: boolean("active").default(true).notNull(),
+  order: integer("order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type InsertBanner = typeof banners.$inferInsert;
+export type Banner = typeof banners.$inferSelect;
+
+export const insertBannerSchema = createInsertSchema(banners).omit({
+  createdAt: true,
+});
+
 export const courseworkItemsRelations = relations(courseworkItems, ({ one }) => ({
   teacher: one(users, {
     fields: [courseworkItems.teacherId],

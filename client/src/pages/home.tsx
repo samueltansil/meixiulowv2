@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { ActivityTracker } from "@/components/activity-tracker";
 import { useQuery } from "@tanstack/react-query";
-import type { Story } from "@shared/schema";
+import type { Story, Banner } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import ProfileButton from "@/components/ProfileButton";
 
@@ -48,35 +48,44 @@ export default function Home() {
     queryKey: ["/api/stories/featured"],
   });
 
+  const { data: banners = [] } = useQuery<Banner[]>({
+    queryKey: ["/api/banners/active"],
+  });
+
+  const allFeaturedItems = [
+    ...featuredStories.map(s => ({ type: 'story' as const, data: s })),
+    ...banners.map(b => ({ type: 'banner' as const, data: b }))
+  ];
+
   const filteredArticles = activeCategory === "All" 
     ? stories 
     : stories.filter(a => a.category === activeCategory);
 
   const nextSlide = useCallback(() => {
-    if (featuredStories.length > 0) {
-      setCurrentSlide((prev) => (prev + 1) % featuredStories.length);
+    if (allFeaturedItems.length > 0) {
+      setCurrentSlide((prev) => (prev + 1) % allFeaturedItems.length);
     }
-  }, [featuredStories.length]);
+  }, [allFeaturedItems.length]);
 
   const prevSlide = useCallback(() => {
-    if (featuredStories.length > 0) {
-      setCurrentSlide((prev) => (prev - 1 + featuredStories.length) % featuredStories.length);
+    if (allFeaturedItems.length > 0) {
+      setCurrentSlide((prev) => (prev - 1 + allFeaturedItems.length) % allFeaturedItems.length);
     }
-  }, [featuredStories.length]);
+  }, [allFeaturedItems.length]);
 
   useEffect(() => {
-    if (featuredStories.length <= 1) return;
+    if (allFeaturedItems.length <= 1) return;
     const interval = setInterval(nextSlide, 5000);
     return () => clearInterval(interval);
-  }, [featuredStories.length, nextSlide]);
+  }, [allFeaturedItems.length, nextSlide]);
 
   useEffect(() => {
-    if (currentSlide >= featuredStories.length && featuredStories.length > 0) {
+    if (currentSlide >= allFeaturedItems.length && allFeaturedItems.length > 0) {
       setCurrentSlide(0);
     }
-  }, [featuredStories.length, currentSlide]);
+  }, [allFeaturedItems.length, currentSlide]);
 
-  const currentFeaturedStory = featuredStories[currentSlide];
+  const currentFeaturedItem = allFeaturedItems[currentSlide];
 
   return (
     <div className="min-h-screen bg-background font-sans selection:bg-accent selection:text-accent-foreground flex flex-col">
@@ -205,10 +214,10 @@ export default function Home() {
       <main className="container mx-auto px-4 py-8 pb-24 flex-grow">
         <ActivityTracker />
 
-        {/* Hero Section - Featured Stories Slideshow */}
-        {activeCategory === "All" && featuredStories.length > 0 && currentFeaturedStory && (
+        {/* Hero Section - Featured Stories & Banners Slideshow */}
+        {activeCategory === "All" && allFeaturedItems.length > 0 && currentFeaturedItem && (
           <section className="mb-6 relative">
-            <div className="relative rounded-2xl overflow-hidden bg-white shadow-lg">
+            <div className="relative rounded-2xl overflow-hidden bg-white shadow-lg min-h-[280px] md:min-h-[320px]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentSlide}
@@ -216,38 +225,53 @@ export default function Home() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
                   transition={{ duration: 0.3 }}
+                  className="h-full"
                 >
-                  <Link href={`/story/${currentFeaturedStory.id}`}>
-                    <div className="grid md:grid-cols-2 gap-0 cursor-pointer group min-h-[280px] md:min-h-[300px]">
-                      <div className="order-2 md:order-1 p-4 md:p-6 flex flex-col justify-center bg-gradient-to-br from-white to-blue-50 h-full">
-                        <h1 className="font-heading text-xl md:text-2xl lg:text-3xl font-bold leading-tight mb-3 text-foreground line-clamp-2">
-                          {currentFeaturedStory.title}
-                        </h1>
-                        <p className="text-sm md:text-base text-muted-foreground mb-4 leading-relaxed max-w-md line-clamp-2">
-                          {currentFeaturedStory.excerpt}
-                        </p>
-                        <Button size="sm" className="w-fit rounded-full text-sm px-6 h-9 shadow-md shadow-primary/20" data-testid="button-hero-read">
-                          Read the Full Story
-                        </Button>
+                  {currentFeaturedItem.type === 'story' ? (
+                    <Link href={`/story/${currentFeaturedItem.data.id}`} className="block h-full">
+                      <div className="grid md:grid-cols-2 gap-0 cursor-pointer group h-full min-h-[280px] md:min-h-[320px]">
+                        <div className="order-2 md:order-1 p-4 md:p-6 flex flex-col justify-center bg-gradient-to-br from-white to-blue-50">
+                          <h1 className="font-heading text-xl md:text-2xl lg:text-3xl font-bold leading-tight mb-3 text-foreground line-clamp-2">
+                            {currentFeaturedItem.data.title}
+                          </h1>
+                          <p className="text-sm md:text-base text-muted-foreground mb-4 leading-relaxed max-w-md line-clamp-2">
+                            {currentFeaturedItem.data.excerpt}
+                          </p>
+                          <Button size="sm" className="w-fit rounded-full text-sm px-6 h-9 shadow-md shadow-primary/20" data-testid="button-hero-read">
+                            Read the Full Story
+                          </Button>
+                        </div>
+                        <div className="order-1 md:order-2 relative h-48 md:h-auto min-h-[180px] overflow-hidden">
+                          <img 
+                            src={currentFeaturedItem.data.thumbnail} 
+                            alt={currentFeaturedItem.data.title}
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent md:hidden" />
+                          <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-bold text-xs tracking-wide">
+                            FEATURED STORY
+                          </span>
+                        </div>
                       </div>
-                      <div className="order-1 md:order-2 relative h-32 md:h-full min-h-[120px] overflow-hidden">
-                        <img 
-                          src={currentFeaturedStory.thumbnail} 
-                          alt={currentFeaturedStory.title}
-                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent md:hidden" />
-                        <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-bold text-xs tracking-wide">
-                          FEATURED STORY
-                        </span>
-                      </div>
+                    </Link>
+                  ) : (
+                    <div 
+                      className="w-full h-full min-h-[280px] md:min-h-[320px] relative cursor-pointer group"
+                      onClick={() => setActiveCategory("Weekly Theme")}
+                    >
+                      <img 
+                        src={currentFeaturedItem.data.imageUrl} 
+                        alt={currentFeaturedItem.data.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
                     </div>
-                  </Link>
+                  )}
                 </motion.div>
               </AnimatePresence>
 
               {/* Navigation Arrows */}
-              {featuredStories.length > 1 && (
+              {allFeaturedItems.length > 1 && (
                 <>
                   <button
                     onClick={(e) => { e.stopPropagation(); prevSlide(); }}
@@ -268,9 +292,9 @@ export default function Home() {
             </div>
 
             {/* Slide Indicators */}
-            {featuredStories.length > 1 && (
+            {allFeaturedItems.length > 1 && (
               <div className="flex justify-center gap-2 mt-4">
-                {featuredStories.map((_, index) => (
+                {allFeaturedItems.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentSlide(index)}

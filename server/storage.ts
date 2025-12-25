@@ -22,6 +22,9 @@ import {
   type InsertStoryGame,
   type CourseworkItem,
   type InsertCourseworkItem,
+  banners,
+  type Banner,
+  type InsertBanner,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -96,6 +99,13 @@ export interface IStorage {
   updateUserProfile(userId: string, data: { firstName?: string; lastName?: string }): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<void>;
   updateUserNotifications(userId: string, data: { marketingEmailsOptIn?: boolean; contentAlertsOptIn?: boolean; teacherUpdatesOptIn?: boolean }): Promise<User>;
+
+  // Banners
+  getBanners(): Promise<Banner[]>;
+  getActiveBanners(): Promise<Banner[]>;
+  insertBanner(banner: InsertBanner): Promise<Banner>;
+  deleteBanner(id: number): Promise<void>;
+  updateBanner(id: number, banner: Partial<InsertBanner>): Promise<Banner>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -560,6 +570,32 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async getBanners(): Promise<Banner[]> {
+    return await db.select().from(banners).orderBy(desc(banners.createdAt));
+  }
+
+  async getActiveBanners(): Promise<Banner[]> {
+    return await db.select().from(banners).where(eq(banners.active, true)).orderBy(desc(banners.createdAt));
+  }
+
+  async insertBanner(bannerData: InsertBanner): Promise<Banner> {
+    const [banner] = await db.insert(banners).values(bannerData).returning();
+    return banner;
+  }
+
+  async deleteBanner(id: number): Promise<void> {
+    await db.delete(banners).where(eq(banners.id, id));
+  }
+
+  async updateBanner(id: number, bannerData: Partial<InsertBanner>): Promise<Banner> {
+    const [banner] = await db
+      .update(banners)
+      .set(bannerData)
+      .where(eq(banners.id, id))
+      .returning();
+    return banner;
   }
 }
 
