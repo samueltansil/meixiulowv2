@@ -256,13 +256,13 @@ export default function Home() {
                     </Link>
                   ) : (
                     <div 
-                      className="w-full h-full min-h-[280px] md:min-h-[320px] relative cursor-pointer group"
+                      className="w-full h-48 md:h-[320px] relative cursor-pointer group overflow-hidden"
                       onClick={() => setActiveCategory("Weekly Theme")}
                     >
                       <img 
                         src={currentFeaturedItem.data.imageUrl} 
                         alt={currentFeaturedItem.data.title}
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover scale-110 md:scale-100"
                       />
                       <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
                       <div className="absolute top-4 left-4 flex items-center gap-2">

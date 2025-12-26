@@ -118,7 +118,7 @@ export function FeaturedVideoSlideshow() {
                <img 
                  src={currentItem.data.imageUrl} 
                  alt={currentItem.data.title}
-                 className="absolute inset-0 w-full h-full object-cover"
+                 className="absolute inset-0 w-full h-full object-cover scale-110 md:scale-100"
                />
                <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
                <div className="absolute top-3 left-3 flex items-center gap-2">

@@ -272,7 +272,7 @@ export default function Games() {
                          <img 
                            src={banner.imageUrl} 
                            alt={banner.title}
-                           className="w-full h-full object-cover"
+                           className="w-full h-full object-cover scale-110 md:scale-100"
                          />
                          <div className="absolute inset-0 bg-black/10 hover:bg-black/0 transition-colors" />
                          <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-pink-100 text-pink-700 font-bold text-xs tracking-wide">
