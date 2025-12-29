@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, Reorder } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, ArrowDown } from "lucide-react";
+import { CheckCircle, ArrowDown, Volume2, VolumeX } from "lucide-react";
 import type { TimelineGameConfig } from "@shared/schema";
 import { useGameAudio } from "@/hooks/useGameAudio";
 import CongratulationsScreen from "./CongratulationsScreen";
@@ -41,7 +41,8 @@ export default function TimelineGame({
   const [isComplete, setIsComplete] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
 
-  const { playSound } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const { playSound, setBackgroundMusicMuted } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const [isMuted, setIsMuted] = useState(false);
 
   const initializeGame = useCallback(() => {
     const shuffledEvents = config.events
@@ -139,7 +140,21 @@ export default function TimelineGame({
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4 w-full max-w-lg mx-auto overflow-x-hidden">
+    <div className="relative flex flex-col gap-6 p-4 w-full max-w-lg mx-auto overflow-x-hidden">
+      <div className="absolute top-2 right-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setBackgroundMusicMuted(!isMuted);
+            setIsMuted(!isMuted);
+          }}
+          className="w-12 h-12"
+          aria-label={isMuted ? "Unmute background music" : "Mute background music"}
+        >
+          {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+        </Button>
+      </div>
       <div className="text-center">
         <h3 className="font-heading text-xl font-bold mb-2">Put these events in order!</h3>
         <p className="text-sm text-muted-foreground">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Play } from "lucide-react";
+import { Play, Volume2, VolumeX } from "lucide-react";
 import type { WhackGameConfig } from "@shared/schema";
 import { useGameAudio } from "@/hooks/useGameAudio";
 import CongratulationsScreen from "./CongratulationsScreen";
@@ -45,7 +45,8 @@ export default function WhackAMoleGame({
   const playTimeRef = useRef(0);
   const [containerSize, setContainerSize] = useState(480);
   
-  const { playSound } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const { playSound, startBackgroundMusic, setBackgroundMusicMuted } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const [isMuted, setIsMuted] = useState(false);
 
   const GRID_SIZE = 9;
   const MOLE_DURATION = 2200;
@@ -67,6 +68,7 @@ export default function WhackAMoleGame({
 
   const startGame = () => {
     playSound('click');
+    startBackgroundMusic();
     setGameStarted(true);
     setTimeLeft(config.duration || 60);
     setScore(0);
@@ -203,6 +205,18 @@ export default function WhackAMoleGame({
         <span className={`${timeLeft <= 10 ? 'text-red-500 animate-pulse' : ''}`}>
           Time: <strong>{timeLeft}s</strong>
         </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setBackgroundMusicMuted(!isMuted);
+            setIsMuted(!isMuted);
+          }}
+          className="ml-2 w-12 h-12"
+          aria-label={isMuted ? "Unmute background music" : "Mute background music"}
+        >
+          {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+        </Button>
       </div>
 
       <div 

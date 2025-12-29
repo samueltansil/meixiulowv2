@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Trophy, CheckCircle, XCircle, ArrowRight } from "lucide-react";
+import { Trophy, CheckCircle, XCircle, ArrowRight, Volume2, VolumeX } from "lucide-react";
 import type { QuizGameConfig } from "@shared/schema";
 import { useGameAudio } from "@/hooks/useGameAudio";
 import CongratulationsScreen from "./CongratulationsScreen";
@@ -33,7 +33,8 @@ export default function QuizGame({
   const [gameTime, setGameTime] = useState(0);
   const [finalScore, setFinalScore] = useState(0);
 
-  const { playSound } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const { playSound, setBackgroundMusicMuted } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const [isMuted, setIsMuted] = useState(false);
   const questions = config.questions || [];
   const passingScore = config.passingScore || Math.ceil(questions.length * 0.6);
 
@@ -130,8 +131,21 @@ export default function QuizGame({
         <span className="font-heading">
           Question <strong>{currentQuestion + 1}</strong> of {questions.length}
         </span>
-        <span className="text-muted-foreground">
-          Score: <strong className="text-primary">{correctAnswers}</strong>
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <span>
+            Score: <strong className="text-primary">{correctAnswers}</strong>
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setBackgroundMusicMuted(!isMuted);
+              setIsMuted(!isMuted);
+            }}
+            aria-label={isMuted ? "Unmute background music" : "Mute background music"}
+          >
+            {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+          </Button>
         </span>
       </div>
 

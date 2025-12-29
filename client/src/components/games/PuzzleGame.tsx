@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Shuffle } from "lucide-react";
+import { Shuffle, Volume2, VolumeX } from "lucide-react";
 import type { PuzzleGameConfig } from "@shared/schema";
 import { useGameAudio } from "@/hooks/useGameAudio";
 import CongratulationsScreen from "./CongratulationsScreen";
@@ -45,7 +45,8 @@ export default function PuzzleGame({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState(480);
   
-  const { playSound } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const { playSound, setBackgroundMusicMuted } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const [isMuted, setIsMuted] = useState(false);
 
   const initializePuzzle = useCallback(() => {
     const initialPieces: PuzzlePiece[] = [];
@@ -172,6 +173,18 @@ export default function PuzzleGame({
       <div className="flex items-center gap-8 text-lg font-heading">
         <span>Moves: <strong>{moves}</strong></span>
         <span>Time: <strong>{Math.floor(gameTime / 60)}:{(gameTime % 60).toString().padStart(2, '0')}</strong></span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setBackgroundMusicMuted(!isMuted);
+            setIsMuted(!isMuted);
+          }}
+          className="ml-2 w-12 h-12"
+          aria-label={isMuted ? "Unmute background music" : "Mute background music"}
+        >
+          {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+        </Button>
       </div>
 
       {config.hintText && (

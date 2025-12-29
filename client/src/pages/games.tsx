@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Search, Trophy, Menu, X, Home, Play, Gamepad2, GraduationCap, Settings, Puzzle, Sparkles, Target, HelpCircle, Calendar } from "lucide-react";
+import { Search, Trophy, Menu, X, Home, Play, Gamepad2, GraduationCap, Settings, Puzzle, Sparkles, Target, HelpCircle, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import gamesHero from "@assets/generated_images/kids_games_hero_illustration.png";
 import logo from "@assets/whypals-logo.png";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import type { StoryGame, Banner } from "@shared/schema";
 import ProfileButton from "@/components/ProfileButton";
+import playPlaceholder from "@/assets/play-placeholder.png";
 
 const GAME_TYPE_ICONS: Record<string, typeof Puzzle> = {
   puzzle: Puzzle,
@@ -67,12 +68,20 @@ export default function Games() {
   ];
 
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
+  const nextFeatured = () => {
+    if (allFeaturedItems.length > 0) {
+      setCurrentFeaturedIndex((prev) => (prev + 1) % allFeaturedItems.length);
+    }
+  };
+  const prevFeatured = () => {
+    if (allFeaturedItems.length > 0) {
+      setCurrentFeaturedIndex((prev) => (prev - 1 + allFeaturedItems.length) % allFeaturedItems.length);
+    }
+  };
 
   useEffect(() => {
     if (allFeaturedItems.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentFeaturedIndex((prev) => (prev + 1) % allFeaturedItems.length);
-    }, 5000);
+    const interval = setInterval(nextFeatured, 5000);
     return () => clearInterval(interval);
   }, [allFeaturedItems.length]);
 
@@ -221,34 +230,48 @@ export default function Games() {
                     return (
                       <motion.div
                         key={`game-${game.id}`}
-                        initial={{ opacity: 0, x: 50 }}
+                        initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -50 }}
+                        exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.4 }}
                         className="absolute inset-0"
                       >
                         <Link href={`/game/${game.id}`} className="block h-full">
-                          <div className="relative w-full h-full cursor-pointer group">
-                            {game.thumbnail ? (
-                              <img src={game.thumbnail} alt={game.title} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className={`w-full h-full ${colorClass} flex items-center justify-center`}>
-                                <GameIcon className="w-24 h-24 opacity-30" />
+                          <div className="flex flex-col md:grid md:grid-cols-2 gap-0 h-full cursor-pointer group">
+                            <div className="order-2 md:order-1 flex-1 p-5 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white to-emerald-50">
+                              <div className="inline-flex items-center gap-2 mb-3">
+                                <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full">Featured Game</span>
+                                <span className="bg-white/90 text-gray-700 text-xs font-bold px-3 py-1 rounded-full">{game.gameType.toUpperCase()}</span>
                               </div>
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-                            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${colorClass} mb-2`}>
-                                <GameIcon className="w-3 h-3" /> {game.gameType.toUpperCase()}
+                              <h2 className="font-heading text-xl md:text-2xl lg:text-3xl font-bold mb-3 line-clamp-2 text-foreground">{game.title}</h2>
+                              <p className="text-muted-foreground text-sm md:text-base mb-4 line-clamp-2">{game.description || "Play, Learn, and Win!"}</p>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                                <span className="flex items-center gap-1"><Trophy className="w-4 h-4" /> {game.pointsReward} pts</span>
                               </div>
-                              <h2 className="font-heading text-2xl md:text-4xl font-bold text-white mb-1">{game.title}</h2>
-                              <p className="text-white/80 text-sm md:text-base line-clamp-1">{game.description || "Play, Learn, and Win!"}</p>
+                              <Button size="sm" className="mt-auto w-fit rounded-full text-sm px-6 h-9 shadow-md shadow-primary/20 gap-2">
+                                <Play className="w-4 h-4 fill-current" />
+                                Play Now
+                              </Button>
                             </div>
-                            <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg">
-                              <Trophy className="w-4 h-4" /> {game.pointsReward} pts
-                            </div>
-                            <div className="absolute top-4 left-4 bg-primary text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg">
-                              <Sparkles className="w-4 h-4" /> Featured
+                            <div className="order-1 md:order-2 relative h-[60%] md:h-full overflow-hidden">
+                              {game.thumbnail ? (
+                                <img 
+                                  src={game.thumbnail}
+                                  alt={game.title}
+                                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                              ) : (
+                                <img 
+                                  src={playPlaceholder}
+                                  alt="Play"
+                                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                              )}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors">
+                                <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                                  <Play className="w-6 h-6 text-primary fill-current ml-1" />
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </Link>
@@ -284,24 +307,38 @@ export default function Games() {
                 })}
               </AnimatePresence>
               {allFeaturedItems.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                  {allFeaturedItems.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentFeaturedIndex(index)}
-                      className={`w-2.5 h-2.5 rounded-full transition-all ${
-                        index === currentFeaturedIndex 
-                          ? "bg-white w-6" 
-                          : "bg-white/50 hover:bg-white/75"
-                      }`}
-                    />
-                  ))}
-                </div>
+                <>
+                  <button
+                    onClick={(e) => { e.preventDefault(); prevFeatured(); }}
+                    className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-primary" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); nextFeatured(); }}
+                    className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all"
+                  >
+                    <ChevronRight className="w-5 h-5 text-primary" />
+                  </button>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                    {allFeaturedItems.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={(e) => { e.preventDefault(); setCurrentFeaturedIndex(index); }}
+                        className={`w-2.5 h-2.5 rounded-full transition-all ${
+                          index === currentFeaturedIndex 
+                            ? 'bg-primary w-6' 
+                            : 'bg-gray-300 hover:bg-gray-400'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </>
           ) : (
             <>
-              <img src={gamesHero} alt="Games" className="absolute inset-0 w-full h-full object-cover opacity-50" />
+              <img src={playPlaceholder} alt="Play" className="absolute inset-0 w-full h-full object-cover opacity-50" />
               <div className="absolute inset-0 bg-primary/10" />
               <div className="relative z-10 h-full flex flex-col items-center justify-center text-center">
                 <h1 className="font-heading text-4xl md:text-6xl font-bold text-primary mb-2 drop-shadow-sm">Games</h1>
@@ -348,9 +385,11 @@ export default function Games() {
                           className="w-full h-32 object-cover rounded-2xl"
                         />
                       ) : (
-                        <div className={`w-full h-32 rounded-2xl ${colorClass} flex items-center justify-center`}>
-                          <GameIcon className="w-12 h-12 opacity-50" />
-                        </div>
+                        <img 
+                          src={playPlaceholder} 
+                          alt="Play" 
+                          className="w-full h-32 object-cover rounded-2xl" 
+                        />
                       )}
                       <div className={`absolute -bottom-3 -right-3 w-14 h-14 rounded-xl ${colorClass} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
                         <GameIcon className="w-7 h-7" />

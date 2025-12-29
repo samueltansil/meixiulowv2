@@ -13,7 +13,7 @@ const SOUND_EFFECTS: Record<string, string> = {
   match: 'https://cdn.freesound.org/previews/270/270304_5123851-lq.mp3',
   complete: 'https://cdn.freesound.org/previews/270/270402_5123851-lq.mp3',
   fanfare: 'https://cdn.freesound.org/previews/320/320775_1661766-lq.mp3',
-  correct: 'https://cdn.freesound.org/previews/220/220206_1015240-lq.mp3',
+  correct: '/audio/sfx/correct.mp3',
 };
 
 export type SoundEffectType = keyof typeof SOUND_EFFECTS;
@@ -29,18 +29,23 @@ function getOrCreateAudio(url: string): HTMLAudioElement {
   return audio;
 }
 
+const DEFAULT_BGM_URL: string | undefined = (import.meta as any).env?.VITE_DEFAULT_BGM_URL || '/audio/default-bgm.mp3';
+
 export function useGameAudio(options: GameAudioOptions = {}) {
   const { backgroundMusicUrl, soundEffectsEnabled = true } = options;
   const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
   const musicStartedRef = useRef(false);
+  const isMutedRef = useRef(false);
 
   // Start background music - call this after user interaction (e.g., Start Game button)
   const startBackgroundMusic = useCallback(() => {
-    if (!backgroundMusicUrl || musicStartedRef.current) return;
+    const url = backgroundMusicUrl || DEFAULT_BGM_URL;
+    if (!url || musicStartedRef.current) return;
     
-    const audio = getOrCreateAudio(backgroundMusicUrl);
+    const audio = getOrCreateAudio(url);
     audio.loop = true;
     audio.volume = 0.3;
+    audio.muted = isMutedRef.current;
     backgroundMusicRef.current = audio;
     musicStartedRef.current = true;
     audio.play().catch(() => {});
@@ -83,11 +88,25 @@ export function useGameAudio(options: GameAudioOptions = {}) {
       backgroundMusicRef.current.play().catch(() => {});
     }
   }, []);
+  
+  const setBackgroundMusicMuted = useCallback((muted: boolean) => {
+    isMutedRef.current = muted;
+    const url = backgroundMusicUrl || DEFAULT_BGM_URL;
+    if (!url) return;
+    const audio = getOrCreateAudio(url);
+    audio.muted = muted;
+    if (muted) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
+  }, [backgroundMusicUrl]);
 
   return {
     playSound,
     startBackgroundMusic,
     stopBackgroundMusic,
     resumeBackgroundMusic,
+    setBackgroundMusicMuted,
   };
 }

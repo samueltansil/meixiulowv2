@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Volume2, VolumeX } from "lucide-react";
 import type { MatchGameConfig } from "@shared/schema";
 import { useGameAudio } from "@/hooks/useGameAudio";
 import CongratulationsScreen from "./CongratulationsScreen";
@@ -42,7 +44,8 @@ export default function MemoryMatchGame({
   const [finalScore, setFinalScore] = useState(0);
   const [containerSize, setContainerSize] = useState(520);
 
-  const { playSound } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const { playSound, setBackgroundMusicMuted } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     const updateSize = () => {
@@ -197,7 +200,21 @@ export default function MemoryMatchGame({
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 p-4">
+    <div className="relative flex flex-col items-center gap-6 p-4">
+      <div className="absolute top-2 right-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setBackgroundMusicMuted(!isMuted);
+            setIsMuted(!isMuted);
+          }}
+          className="w-12 h-12"
+          aria-label={isMuted ? "Unmute background music" : "Mute background music"}
+        >
+          {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+        </Button>
+      </div>
       <div className="flex items-center gap-6 md:gap-8 text-base md:text-lg font-heading flex-wrap justify-center">
         <span>Matches: <strong className="text-primary">{matches}/{config.pairs.length}</strong></span>
         <span>Moves: <strong>{moves}</strong></span>
