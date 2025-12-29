@@ -256,7 +256,7 @@ export default function Home() {
                     </Link>
                   ) : (
                     <div 
-                      className="w-full h-48 md:h-[320px] relative cursor-pointer group overflow-hidden"
+                      className="w-full h-full min-h-[280px] md:min-h-[320px] relative cursor-pointer group overflow-hidden"
                       onClick={() => setActiveCategory("Weekly Theme")}
                     >
                       <img 
