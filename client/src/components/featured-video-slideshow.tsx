@@ -53,7 +53,7 @@ export function FeaturedVideoSlideshow() {
   const currentItem = allFeaturedItems[currentSlide];
 
   return (
-    <div className="relative mb-8 rounded-2xl overflow-hidden bg-white shadow-lg min-h-[280px] md:min-h-[320px]">
+    <div className="relative mb-8 rounded-2xl overflow-hidden bg-white shadow-lg aspect-square md:aspect-auto md:min-h-[320px]">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide}
@@ -65,8 +65,8 @@ export function FeaturedVideoSlideshow() {
         >
           {currentItem.type === 'video' ? (
             <Link href={`/video/${currentItem.data.id}`}>
-              <div className="grid md:grid-cols-2 gap-0 h-full min-h-[280px] md:min-h-[320px] cursor-pointer group">
-                <div className="order-2 md:order-1 p-5 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white to-blue-50">
+              <div className="flex flex-col md:grid md:grid-cols-2 gap-0 h-full cursor-pointer group">
+                <div className="order-2 md:order-1 flex-1 p-5 md:p-8 flex flex-col justify-start md:justify-center bg-gradient-to-br from-white to-blue-50">
                   <h2 className="font-heading text-xl md:text-2xl lg:text-3xl font-bold mb-3 line-clamp-2 text-foreground">
                     {currentItem.data.title}
                   </h2>
@@ -86,7 +86,7 @@ export function FeaturedVideoSlideshow() {
                     Watch Now
                   </Button>
                 </div>
-                <div className="order-1 md:order-2 relative h-40 md:h-auto min-h-[180px] overflow-hidden">
+                <div className="order-1 md:order-2 relative h-[55%] md:h-auto overflow-hidden">
                   <img 
                     src={currentItem.data.thumbnail}
                     alt={currentItem.data.title}
@@ -110,7 +110,7 @@ export function FeaturedVideoSlideshow() {
             </Link>
           ) : (
             <div 
-              className="w-full h-full relative cursor-pointer group min-h-[280px] md:min-h-[320px]"
+              className="w-full h-full relative cursor-pointer group"
               onClick={() => {
                 console.log("Banner clicked:", currentItem.data.title);
               }}

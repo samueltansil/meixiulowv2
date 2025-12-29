@@ -217,7 +217,7 @@ export default function Home() {
         {/* Hero Section - Featured Stories & Banners Slideshow */}
         {activeCategory === "All" && allFeaturedItems.length > 0 && currentFeaturedItem && (
           <section className="mb-6 relative">
-            <div className="relative rounded-2xl overflow-hidden bg-white shadow-lg min-h-[280px] md:min-h-[320px]">
+            <div className="relative rounded-2xl overflow-hidden bg-white shadow-lg aspect-square md:aspect-auto md:min-h-[320px]">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentSlide}
@@ -229,8 +229,8 @@ export default function Home() {
                 >
                   {currentFeaturedItem.type === 'story' ? (
                     <Link href={`/story/${currentFeaturedItem.data.id}`} className="block h-full">
-                      <div className="grid md:grid-cols-2 gap-0 cursor-pointer group h-full min-h-[280px] md:min-h-[320px]">
-                        <div className="order-2 md:order-1 p-4 md:p-6 flex flex-col justify-center bg-gradient-to-br from-white to-blue-50">
+                      <div className="flex flex-col md:grid md:grid-cols-2 gap-0 cursor-pointer group h-full">
+                        <div className="order-2 md:order-1 flex-1 p-4 md:p-6 flex flex-col justify-start md:justify-center bg-gradient-to-br from-white to-blue-50">
                           <h1 className="font-heading text-xl md:text-2xl lg:text-3xl font-bold leading-tight mb-3 text-foreground line-clamp-2">
                             {currentFeaturedItem.data.title}
                           </h1>
@@ -241,7 +241,7 @@ export default function Home() {
                             Read the Full Story
                           </Button>
                         </div>
-                        <div className="order-1 md:order-2 relative h-48 md:h-auto min-h-[180px] overflow-hidden">
+                        <div className="order-1 md:order-2 relative h-[55%] md:h-auto overflow-hidden">
                           <img 
                             src={currentFeaturedItem.data.thumbnail} 
                             alt={currentFeaturedItem.data.title}
@@ -256,7 +256,7 @@ export default function Home() {
                     </Link>
                   ) : (
                     <div 
-                      className="w-full h-full min-h-[280px] md:min-h-[320px] relative cursor-pointer group overflow-hidden"
+                      className="w-full h-full relative cursor-pointer group overflow-hidden"
                       onClick={() => setActiveCategory("Weekly Theme")}
                     >
                       <img 
