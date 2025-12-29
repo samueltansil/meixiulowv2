@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Play, Clock, Search, Menu, FlaskConical, Leaf, Sparkles, Cloud, Pencil, X, Home, Gamepad2, GraduationCap, Settings, Star } from "lucide-react";
 import { FeaturedVideoSlideshow } from "@/components/featured-video-slideshow";
 import logo from "@assets/whypals-logo.png";
+import watchPlaceholder from "@/assets/watch-placeholder.png";
 import { useQuery } from "@tanstack/react-query";
 import type { Video } from "@shared/schema";
 import { useState, useEffect, useRef } from "react";
@@ -473,7 +474,11 @@ export default function Videos() {
                     data-testid={`video-card-${video.id}`}
                   >
                     <div className="relative aspect-video">
-                      <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      {video.thumbnail ? (
+                        <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      ) : (
+                        <img src={watchPlaceholder} alt="Watch" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      )}
                       <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
                         <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                           <Play className="w-5 h-5 text-primary fill-current ml-1" />

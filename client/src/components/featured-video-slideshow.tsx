@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import type { Video, Banner } from "@shared/schema";
+import watchPlaceholder from "@/assets/watch-placeholder.png";
 
 export function FeaturedVideoSlideshow() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -87,11 +88,19 @@ export function FeaturedVideoSlideshow() {
                   </Button>
                 </div>
                 <div className="order-1 md:order-2 relative h-[60%] md:h-full overflow-hidden">
-                  <img 
-                    src={currentItem.data.thumbnail}
-                    alt={currentItem.data.title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
+                  {currentItem.data.thumbnail ? (
+                    <img 
+                      src={currentItem.data.thumbnail}
+                      alt={currentItem.data.title}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  ) : (
+                    <img 
+                      src={watchPlaceholder}
+                      alt="Watch"
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  )}
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors">
                     <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
                       <Play className="w-6 h-6 text-primary fill-current ml-1" />
