@@ -45,8 +45,10 @@ var schema_exports = {};
 __export(schema_exports, {
   COURSEWORK_TYPES: () => COURSEWORK_TYPES,
   SUBJECTS: () => SUBJECTS,
+  banners: () => banners,
   courseworkItems: () => courseworkItems,
   courseworkItemsRelations: () => courseworkItemsRelations,
+  insertBannerSchema: () => insertBannerSchema,
   insertCourseworkItemSchema: () => insertCourseworkItemSchema,
   insertR2VideoMetadataSchema: () => insertR2VideoMetadataSchema,
   insertStoryGameSchema: () => insertStoryGameSchema,
@@ -79,8 +81,7 @@ var sessions = (0, import_pg_core.pgTable)(
     sid: (0, import_pg_core.varchar)("sid").primaryKey(),
     sess: (0, import_pg_core.jsonb)("sess").notNull(),
     expire: (0, import_pg_core.timestamp)("expire").notNull()
-  },
-  (table) => [(0, import_pg_core.index)("IDX_session_expire").on(table.expire)]
+  }
 );
 var users = (0, import_pg_core.pgTable)("users", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
@@ -125,9 +126,12 @@ var videos = (0, import_pg_core.pgTable)("videos", {
   category: (0, import_pg_core.varchar)("category").notNull(),
   views: (0, import_pg_core.integer)("views").default(0).notNull(),
   isFeatured: (0, import_pg_core.boolean)("is_featured").default(false).notNull(),
+  linkedStoryTitle: (0, import_pg_core.varchar)("linked_story_title", { length: 255 }),
   uploadedBy: (0, import_pg_core.varchar)("uploaded_by").references(() => users.id),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow().notNull()
-});
+}, (table) => [
+  (0, import_pg_core.index)("idx_videos_linked_title").on(table.linkedStoryTitle)
+]);
 var subscriptions = (0, import_pg_core.pgTable)("subscriptions", {
   id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
   userId: (0, import_pg_core.varchar)("user_id").references(() => users.id).notNull(),
@@ -189,31 +193,25 @@ var subscriptionRelations = (0, import_drizzle_orm2.relations)(subscriptions, ({
   })
 }));
 var insertVideoSchema = (0, import_drizzle_zod.createInsertSchema)(videos).omit({
-  id: true,
   createdAt: true
 });
 var updateVideoSchema = (0, import_drizzle_zod.createInsertSchema)(videos).omit({
-  id: true,
   createdAt: true,
   uploadedBy: true,
   views: true
 }).partial();
 var insertSubscriptionSchema = (0, import_drizzle_zod.createInsertSchema)(subscriptions).omit({
-  id: true,
   createdAt: true
 });
 var insertR2VideoMetadataSchema = (0, import_drizzle_zod.createInsertSchema)(r2VideoMetadata).omit({
-  id: true,
   createdAt: true,
   updatedAt: true
 });
 var insertStorySchema = (0, import_drizzle_zod.createInsertSchema)(stories).omit({
-  id: true,
   createdAt: true,
   updatedAt: true
 });
 var updateStorySchema = (0, import_drizzle_zod.createInsertSchema)(stories).omit({
-  id: true,
   createdAt: true,
   updatedAt: true
 }).partial();
@@ -240,12 +238,10 @@ var storyGames = (0, import_pg_core.pgTable)("story_games", {
   (0, import_pg_core.index)("idx_story_games_game_type").on(table.gameType)
 ]);
 var insertStoryGameSchema = (0, import_drizzle_zod.createInsertSchema)(storyGames).omit({
-  id: true,
   createdAt: true,
   updatedAt: true
 });
 var updateStoryGameSchema = (0, import_drizzle_zod.createInsertSchema)(storyGames).omit({
-  id: true,
   createdAt: true,
   updatedAt: true
 }).partial();
@@ -274,6 +270,17 @@ var courseworkItems = (0, import_pg_core.pgTable)("coursework_items", {
   (0, import_pg_core.index)("idx_coursework_type").on(table.itemType),
   (0, import_pg_core.index)("idx_coursework_subject").on(table.subject)
 ]);
+var banners = (0, import_pg_core.pgTable)("banners", {
+  id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
+  title: (0, import_pg_core.varchar)("title", { length: 255 }).notNull(),
+  imageUrl: (0, import_pg_core.text)("image_url").notNull(),
+  active: (0, import_pg_core.boolean)("active").default(true).notNull(),
+  order: (0, import_pg_core.integer)("order").default(0).notNull(),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow().notNull()
+});
+var insertBannerSchema = (0, import_drizzle_zod.createInsertSchema)(banners).omit({
+  createdAt: true
+});
 var courseworkItemsRelations = (0, import_drizzle_orm2.relations)(courseworkItems, ({ one }) => ({
   teacher: one(users, {
     fields: [courseworkItems.teacherId],
@@ -285,13 +292,11 @@ var courseworkItemsRelations = (0, import_drizzle_orm2.relations)(courseworkItem
   })
 }));
 var insertCourseworkItemSchema = (0, import_drizzle_zod.createInsertSchema)(courseworkItems).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
   salesCount: true
 });
 var updateCourseworkItemSchema = (0, import_drizzle_zod.createInsertSchema)(courseworkItems).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
   teacherId: true,
@@ -615,6 +620,23 @@ var DatabaseStorage = class {
     }).where((0, import_drizzle_orm3.eq)(users.id, userId)).returning();
     return user;
   }
+  async getBanners() {
+    return await db.select().from(banners).orderBy((0, import_drizzle_orm3.desc)(banners.createdAt));
+  }
+  async getActiveBanners() {
+    return await db.select().from(banners).where((0, import_drizzle_orm3.eq)(banners.active, true)).orderBy((0, import_drizzle_orm3.desc)(banners.createdAt));
+  }
+  async insertBanner(bannerData) {
+    const [banner] = await db.insert(banners).values(bannerData).returning();
+    return banner;
+  }
+  async deleteBanner(id) {
+    await db.delete(banners).where((0, import_drizzle_orm3.eq)(banners.id, id));
+  }
+  async updateBanner(id, bannerData) {
+    const [banner] = await db.update(banners).set(bannerData).where((0, import_drizzle_orm3.eq)(banners.id, id)).returning();
+    return banner;
+  }
 };
 var storage = new DatabaseStorage();
 
@@ -627,11 +649,12 @@ function getSession() {
   const databaseUrl2 = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
   const sessionStore = new pgStore({
     conString: databaseUrl2,
-    createTableIfMissing: true,
+    createTableIfMissing: false,
     ttl: sessionTtl,
-    tableName: "session"
+    tableName: "sessions"
   });
   const isProduction = process.env.NODE_ENV === "production";
+  console.log(`Session config: secure=${isProduction}, sameSite=${isProduction ? "strict" : "lax"}`);
   return (0, import_express_session.default)({
     secret: process.env.SESSION_SECRET,
     store: sessionStore,
@@ -727,6 +750,39 @@ async function uploadImageToR2(file, filename, contentType, folder = "story-thum
   await r2Client.send(command);
   return { key };
 }
+async function uploadFileToR2(file, key, contentType) {
+  if (!R2_BUCKET_NAME) {
+    throw new Error("R2_BUCKET_NAME not configured");
+  }
+  const command = new import_client_s3.PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+    Body: file,
+    ContentType: contentType
+  });
+  await r2Client.send(command);
+}
+async function getFileFromR2(key) {
+  if (!R2_BUCKET_NAME) {
+    return null;
+  }
+  try {
+    const command = new import_client_s3.GetObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key
+    });
+    const response = await r2Client.send(command);
+    if (!response.Body) return null;
+    const byteArray = await response.Body.transformToByteArray();
+    return Buffer.from(byteArray);
+  } catch (error) {
+    if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    console.error("Error getting file from R2:", error);
+    return null;
+  }
+}
 async function getImageSignedUrl(key, expiresIn = 86400) {
   if (!R2_BUCKET_NAME) {
     throw new Error("R2_BUCKET_NAME not configured");
@@ -742,11 +798,9 @@ async function getImageSignedUrl(key, expiresIn = 86400) {
 // server/routes.ts
 var import_multer = __toESM(require("multer"), 1);
 var BCRYPT_ROUNDS = 12;
-var ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-var ELEVENLABS_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
+var MURF_API_KEY = process.env.MURF_API_KEY;
+var MURF_VOICE_ID = process.env.MURF_VOICE_ID || "en-US-natalie";
 var ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-var timestampsEndpointAvailable = true;
-var timestampsLastChecked = 0;
 var TIMESTAMPS_RETRY_INTERVAL = 5 * 60 * 1e3;
 var adminSessions = /* @__PURE__ */ new Map();
 var ADMIN_SESSION_EXPIRY = 24 * 60 * 60 * 1e3;
@@ -1357,7 +1411,92 @@ async function registerRoutes(httpServer2, app2) {
       res.status(500).json({ message: "Failed to upload image" });
     }
   });
-  const ALLOWED_IMAGE_FOLDERS = ["story-thumbnails", "game-images", "story-content"];
+  app2.post("/api/admin/upload/video-thumbnail", upload.single("image"), async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+      const { key } = await uploadImageToR2(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        "video-thumbnails"
+      );
+      const imageUrl = `/api/images/${key}`;
+      res.json({ imageUrl, key });
+    } catch (error) {
+      console.error("Error uploading video thumbnail:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+  app2.post("/api/admin/upload/banner", upload.single("image"), async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      if (!req.file) return res.status(400).json({ message: "No image file provided" });
+      const { key } = await uploadImageToR2(req.file.buffer, req.file.originalname, req.file.mimetype, "banners");
+      const imageUrl = `/api/images/${key}`;
+      res.json({ imageUrl, key });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to upload banner image" });
+    }
+  });
+  app2.get("/api/banners", async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      const banners2 = await storage.getBanners();
+      res.json(banners2);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch banners" });
+    }
+  });
+  app2.get("/api/banners/active", async (req, res) => {
+    try {
+      const banners2 = await storage.getActiveBanners();
+      res.json(banners2);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch active banners" });
+    }
+  });
+  app2.post("/api/banners", async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      const result = insertBannerSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: (0, import_zod_validation_error.fromZodError)(result.error).message
+        });
+      }
+      const banner = await storage.insertBanner(result.data);
+      res.json(banner);
+    } catch (error) {
+      console.error("Error creating banner:", error);
+      res.status(500).json({ message: "Failed to create banner" });
+    }
+  });
+  app2.delete("/api/banners/:id", async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      const id = parseInt(req.params.id);
+      await storage.deleteBanner(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete banner" });
+    }
+  });
+  app2.patch("/api/banners/:id", async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      const id = parseInt(req.params.id);
+      const banner = await storage.updateBanner(id, req.body);
+      res.json(banner);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update banner" });
+    }
+  });
+  const ALLOWED_IMAGE_FOLDERS = ["story-thumbnails", "game-images", "story-content", "video-thumbnails", "banners"];
   app2.get("/api/images/:key(*)", async (req, res) => {
     try {
       const key = req.params.key;
@@ -1637,120 +1776,110 @@ async function registerRoutes(httpServer2, app2) {
       res.status(500).json({ message: "Failed to record game completion" });
     }
   });
+  app2.post("/api/admin/generate-audio", async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const { text: text2 } = req.body;
+      if (!text2 || typeof text2 !== "string") {
+        return res.status(400).json({ message: "Text is required" });
+      }
+      if (!MURF_API_KEY) {
+        return res.status(500).json({ message: "Murf API key not configured" });
+      }
+      const hash = (0, import_crypto.createHash)("md5").update(text2).digest("hex");
+      const audioKey = `tts/${hash}.mp3`;
+      const jsonKey = `tts/${hash}.json`;
+      console.log("Generating audio for text hash:", hash);
+      const timestampsResponse = await fetch(
+        `https://api.murf.ai/v1/speech/generate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "api-key": MURF_API_KEY
+          },
+          body: JSON.stringify({
+            text: text2,
+            voiceId: MURF_VOICE_ID,
+            format: "MP3",
+            encodeAsBase64: true,
+            rate: -25
+            // Very slow speed for kids
+          })
+        }
+      );
+      if (!timestampsResponse.ok) {
+        const errorText = await timestampsResponse.text();
+        console.error("Murf API error:", errorText);
+        let errorMessage = "Failed to generate speech from Murf AI";
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.errorMessage) {
+            errorMessage = errorJson.errorMessage;
+          }
+        } catch (e) {
+        }
+        return res.status(timestampsResponse.status).json({ message: errorMessage });
+      }
+      const data = await timestampsResponse.json();
+      const wordDurations = data.wordDurations || [];
+      const words = wordDurations.map((w) => ({
+        word: w.word,
+        start: w.startMs / 1e3,
+        end: w.endMs / 1e3
+      }));
+      const duration = data.audioLengthInSeconds || (words.length > 0 ? words[words.length - 1].end : 0);
+      const metadata = {
+        words,
+        duration,
+        hasWordTiming: words.length > 0,
+        text: text2
+      };
+      if (!data.encodedAudio) {
+        throw new Error("No audio data received from Murf AI");
+      }
+      const audioBuffer = Buffer.from(data.encodedAudio, "base64");
+      const jsonBuffer = Buffer.from(JSON.stringify(metadata));
+      await uploadFileToR2(audioBuffer, audioKey, "audio/mpeg");
+      await uploadFileToR2(jsonBuffer, jsonKey, "application/json");
+      res.json({
+        success: true,
+        cached: false,
+        audioUrl: `/api/text-to-speech/audio/${hash}`,
+        jsonUrl: `/api/text-to-speech/json/${hash}`
+      });
+    } catch (error) {
+      console.error("Error generating speech:", error);
+      res.status(500).json({ message: "Failed to generate speech" });
+    }
+  });
   app2.post("/api/text-to-speech", async (req, res) => {
     try {
       const { text: text2 } = req.body;
       if (!text2 || typeof text2 !== "string") {
         return res.status(400).json({ message: "Text is required" });
       }
-      if (!ELEVENLABS_API_KEY) {
-        return res.status(500).json({ message: "ElevenLabs API key not configured" });
+      const hash = (0, import_crypto.createHash)("md5").update(text2).digest("hex");
+      const audioKey = `tts/${hash}.mp3`;
+      const jsonKey = `tts/${hash}.json`;
+      const audioBuffer = await getFileFromR2(audioKey);
+      const jsonBuffer = await getFileFromR2(jsonKey);
+      if (!audioBuffer || !jsonBuffer) {
+        return res.status(404).json({ message: "Audio not generated yet" });
       }
-      const shouldTryTimestamps = timestampsEndpointAvailable || Date.now() - timestampsLastChecked > TIMESTAMPS_RETRY_INTERVAL;
-      if (shouldTryTimestamps) {
-        const timestampsResponse = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}/with-timestamps`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "xi-api-key": ELEVENLABS_API_KEY
-            },
-            body: JSON.stringify({
-              text: text2,
-              model_id: "eleven_multilingual_v2",
-              voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75,
-                style: 0.5,
-                use_speaker_boost: true
-              }
-            })
-          }
-        );
-        if (timestampsResponse.ok) {
-          const data = await timestampsResponse.json();
-          const alignment = data.alignment || {};
-          const characters = alignment.characters || [];
-          const startTimes = alignment.character_start_times_seconds || [];
-          const endTimes = alignment.character_end_times_seconds || [];
-          const words = [];
-          let currentWord = "";
-          let wordStart = null;
-          for (let i = 0; i < characters.length; i++) {
-            const char = characters[i];
-            const isLastChar = i === characters.length - 1;
-            if (char === " " || isLastChar) {
-              if (isLastChar && char !== " ") {
-                currentWord += char;
-              }
-              if (currentWord && wordStart !== null) {
-                const wordEnd = char === " " ? endTimes[i - 1] : endTimes[i];
-                words.push({
-                  word: currentWord,
-                  start: wordStart,
-                  end: wordEnd
-                });
-              }
-              currentWord = "";
-              wordStart = null;
-            } else {
-              if (wordStart === null) {
-                wordStart = startTimes[i];
-              }
-              currentWord += char;
-            }
-          }
-          const audioBase642 = data.audio_base64;
-          return res.json({
-            audio: audioBase642,
-            words,
-            duration: endTimes.length > 0 ? endTimes[endTimes.length - 1] : 0,
-            hasWordTiming: words.length > 0
-          });
-        } else {
-          console.log("Timestamps endpoint returned", timestampsResponse.status, "- will retry in 5 minutes");
-          timestampsEndpointAvailable = false;
-          timestampsLastChecked = Date.now();
-        }
-      }
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
-        {
-          method: "POST",
-          headers: {
-            "Accept": "audio/mpeg",
-            "Content-Type": "application/json",
-            "xi-api-key": ELEVENLABS_API_KEY
-          },
-          body: JSON.stringify({
-            text: text2,
-            model_id: "eleven_multilingual_v2",
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75,
-              style: 0.5,
-              use_speaker_boost: true
-            }
-          })
-        }
-      );
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("ElevenLabs API error:", errorText);
-        return res.status(response.status).json({ message: "Failed to generate speech" });
-      }
-      const audioBuffer = await response.arrayBuffer();
-      const audioBase64 = Buffer.from(audioBuffer).toString("base64");
+      const metadata = JSON.parse(jsonBuffer.toString());
+      const audioBase64 = audioBuffer.toString("base64");
       res.json({
         audio: audioBase64,
-        words: [],
-        duration: 0,
-        hasWordTiming: false
+        words: metadata.words,
+        duration: metadata.duration,
+        hasWordTiming: metadata.hasWordTiming
       });
     } catch (error) {
-      console.error("Error generating speech:", error);
-      res.status(500).json({ message: "Failed to generate speech" });
+      console.error("Error retrieving speech:", error);
+      res.status(500).json({ message: "Failed to retrieve speech" });
     }
   });
   app2.get("/api/marketplace", async (req, res) => {
@@ -2070,12 +2199,11 @@ app.use((req, res, next) => {
     throw err;
   });
   serveStatic(app);
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt(process.env.PORT || "3000", 10);
   httpServer.listen(
     {
       port,
-      host: "0.0.0.0",
-      reusePort: true
+      host: "127.0.0.1"
     },
     () => {
       log(`serving on port ${port}`);

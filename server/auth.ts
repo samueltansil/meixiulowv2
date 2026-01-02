@@ -9,12 +9,13 @@ export function getSession() {
   
   const sessionStore = new pgStore({
     conString: databaseUrl,
-    createTableIfMissing: true,
+    createTableIfMissing: false,
     ttl: sessionTtl,
-    tableName: "session",
+    tableName: "sessions",
   });
   
   const isProduction = process.env.NODE_ENV === "production";
+  console.log(`Session config: secure=${isProduction}, sameSite=${isProduction ? "strict" : "lax"}`);
   
   return session({
     secret: process.env.SESSION_SECRET!,
