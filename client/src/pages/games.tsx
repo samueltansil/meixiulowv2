@@ -216,7 +216,7 @@ export default function Games() {
       <main className="container mx-auto px-4 py-8 flex-grow">
         <ActivityTracker />
 
-        <div className="relative mb-8 rounded-2xl overflow-hidden bg-white shadow-lg aspect-[4/3] md:aspect-auto md:h-[400px] lg:h-[500px]">
+        <div className="relative mb-8 rounded-2xl overflow-hidden bg-white shadow-lg aspect-[4/3] md:aspect-auto md:h-[340px] lg:h-[400px]">
           {allFeaturedItems.length > 0 ? (
             <>
               <AnimatePresence mode="wait">
