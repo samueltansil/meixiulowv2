@@ -279,7 +279,9 @@ export default function StoryPage() {
     );
   }
 
-  const category = CATEGORIES.find(c => c.id === article.category);
+  const categories = Array.isArray(article.category) ? article.category : [article.category];
+  const displayCategories = categories.map(catId => CATEGORIES.find(c => c.id === catId)).filter(Boolean);
+  
   const displayDate = article.publishedAt 
     ? format(new Date(article.publishedAt), 'MMM d, yyyy')
     : '';
@@ -326,11 +328,13 @@ export default function StoryPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <div className="container mx-auto">
-              {category && (
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${category.color} mb-3`}>
-                  {category.label}
-                </span>
-              )}
+              <div className="flex gap-2 flex-wrap mb-3">
+                {displayCategories.map(cat => (
+                  <span key={cat!.id} className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${cat!.color}`}>
+                    {cat!.label}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>

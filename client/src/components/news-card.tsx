@@ -12,7 +12,7 @@ interface NewsCardProps {
 }
 
 export function NewsCard({ article, className }: NewsCardProps) {
-  const categoryColor = CATEGORIES.find((c) => c.id === article.category)?.color || "bg-gray-100 text-gray-700";
+  const categories = Array.isArray(article.category) ? article.category : [article.category];
   
   const displayDate = article.publishedAt 
     ? format(new Date(article.publishedAt), 'MMM d, yyyy')
@@ -32,10 +32,15 @@ export function NewsCard({ article, className }: NewsCardProps) {
           alt={article.title} 
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
-        <div className="absolute top-4 left-4">
-          <span className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide", categoryColor)}>
-            {article.category}
-          </span>
+        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+          {categories.map(cat => {
+            const color = CATEGORIES.find(c => c.id === cat)?.color || "bg-gray-100 text-gray-700";
+            return (
+              <span key={cat} className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide", color)}>
+                {cat}
+              </span>
+            );
+          })}
         </div>
       </div>
       

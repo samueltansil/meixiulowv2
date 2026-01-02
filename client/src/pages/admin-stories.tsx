@@ -14,9 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import logo from "@assets/whypals-logo.png";
+import { CATEGORIES as ALL_CATEGORIES } from "@/lib/data";
 import type { Story } from "@shared/schema";
 
-const CATEGORIES = ["Science", "Nature", "Sports", "World", "Fun"];
+const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
 const ADMIN_TOKEN_KEY = 'newspals_admin_token';
 
 // Regex for matching image tags (Must match story.tsx logic)
@@ -288,7 +289,11 @@ function StoryForm({
   const [slugEdited, setSlugEdited] = useState(false);
   const [excerpt, setExcerpt] = useState(story?.excerpt || "");
   const [content, setContent] = useState(story?.content || "");
-  const [category, setCategory] = useState(story?.category || "Science");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    story?.category 
+      ? (Array.isArray(story.category) ? story.category : [story.category]) 
+      : ["Science"]
+  );
   const [thumbnail, setThumbnail] = useState(story?.thumbnail || "");
   const [thumbnailCredit, setThumbnailCredit] = useState((story as any)?.thumbnailCredit || "");
   const [readTime, setReadTime] = useState(story?.readTime || "3 min read");
@@ -439,7 +444,7 @@ function StoryForm({
       slug,
       excerpt,
       content,
-      category,
+      category: selectedCategories,
       thumbnail,
       thumbnailCredit: thumbnailCredit || null,
       readTime,
@@ -562,18 +567,57 @@ function StoryForm({
       <AudioGenerator content={content} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger data-testid="select-story-category">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((cat) => (
-                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Primary Category</Label>
+            <Select 
+              value={selectedCategories[0]} 
+              onValueChange={(val) => {
+                const newCats = [...selectedCategories];
+                newCats[0] = val;
+                setSelectedCategories(newCats);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Secondary Category (Optional)</Label>
+            <Select 
+              value={selectedCategories[1] || "none"} 
+              onValueChange={(val) => {
+                if (val === "none") {
+                  setSelectedCategories([selectedCategories[0]]);
+                } else {
+                  const newCats = [...selectedCategories];
+                  newCats[1] = val;
+                  setSelectedCategories(newCats);
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select second category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {CATEGORIES.filter(c => c !== selectedCategories[0]).map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="thumbnail">Thumbnail Image</Label>
@@ -700,9 +744,13 @@ function StoryRow({ story, onEdit, onDelete }: { story: Story; onEdit: () => voi
         </div>
       </td>
       <td className="py-4 px-4">
-        <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
-          {story.category}
-        </span>
+        <div className="flex gap-1 flex-wrap">
+          {(Array.isArray(story.category) ? story.category : [story.category]).map((cat: string) => (
+            <span key={cat} className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
+              {cat}
+            </span>
+          ))}
+        </div>
       </td>
       <td className="py-4 px-4">
         {story.isFeatured ? (

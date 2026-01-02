@@ -109,7 +109,7 @@ export const stories = pgTable("stories", {
   title: varchar("title", { length: 255 }).notNull(),
   excerpt: text("excerpt").notNull(),
   content: text("content").notNull(),
-  category: varchar("category").notNull(),
+  category: jsonb("category").$type<string[]>().notNull(),
   thumbnail: text("thumbnail").notNull(),
   thumbnailCredit: text("thumbnail_credit"),
   readTime: varchar("read_time").notNull(),

@@ -21,7 +21,7 @@ export interface Article {
   title: string;
   excerpt: string;
   content: string;
-  category: Category;
+  category: Category | Category[];
   image: string;
   readTime: string;
   date: string;
