@@ -180,12 +180,16 @@ export const insertR2VideoMetadataSchema = createInsertSchema(r2VideoMetadata).o
 export const insertStorySchema = createInsertSchema(stories).omit({
   createdAt: true,
   updatedAt: true,
+}).extend({
+  category: z.array(z.string()),
 });
 
 export const updateStorySchema = createInsertSchema(stories).omit({
   createdAt: true,
   updatedAt: true,
-}).partial();
+}).partial().extend({
+  category: z.array(z.string()).optional(),
+});
 
 // Game templates linked to stories by title for scalability
 export const storyGames = pgTable("story_games", {

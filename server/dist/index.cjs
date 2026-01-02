@@ -165,7 +165,7 @@ var stories = (0, import_pg_core.pgTable)("stories", {
   title: (0, import_pg_core.varchar)("title", { length: 255 }).notNull(),
   excerpt: (0, import_pg_core.text)("excerpt").notNull(),
   content: (0, import_pg_core.text)("content").notNull(),
-  category: (0, import_pg_core.varchar)("category").notNull(),
+  category: (0, import_pg_core.jsonb)("category").$type().notNull(),
   thumbnail: (0, import_pg_core.text)("thumbnail").notNull(),
   thumbnailCredit: (0, import_pg_core.text)("thumbnail_credit"),
   readTime: (0, import_pg_core.varchar)("read_time").notNull(),
