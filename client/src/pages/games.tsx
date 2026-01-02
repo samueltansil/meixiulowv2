@@ -216,29 +216,28 @@ export default function Games() {
       <main className="container mx-auto px-4 py-8 flex-grow">
         <ActivityTracker />
 
-        <div className="relative rounded-3xl overflow-hidden mb-8 h-[280px] md:h-[320px] bg-white shadow-lg">
+        <div className="relative mb-8 rounded-2xl overflow-hidden bg-white shadow-lg aspect-[4/3] md:aspect-auto md:h-[340px] lg:h-[400px]">
           {allFeaturedItems.length > 0 ? (
             <>
               <AnimatePresence mode="wait">
-                {allFeaturedItems.map((item, index) => {
-                  if (index !== currentFeaturedIndex) return null;
-                  
-                  if (item.type === 'game') {
-                    const game = item.data;
-                    const GameIcon = GAME_TYPE_ICONS[game.gameType] || Gamepad2;
-                    const colorClass = GAME_TYPE_COLORS[game.gameType] || "bg-gray-100 text-gray-600";
-                    return (
-                      <motion.div
-                        key={`game-${game.id}`}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.4 }}
-                        className="absolute inset-0"
-                      >
+                <motion.div
+                  key={currentFeaturedIndex}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.4 }}
+                  className="relative h-full"
+                >
+                  {(() => {
+                    const item = allFeaturedItems[currentFeaturedIndex];
+                    if (item.type === 'game') {
+                      const game = item.data;
+                      const GameIcon = GAME_TYPE_ICONS[game.gameType] || Gamepad2;
+                      const colorClass = GAME_TYPE_COLORS[game.gameType] || "bg-gray-100 text-gray-600";
+                      return (
                         <Link href={`/game/${game.id}`} className="block h-full">
-                          <div className="flex flex-col md:grid md:grid-cols-2 gap-0 h-full cursor-pointer group">
-                            <div className="order-2 md:order-1 flex-1 p-5 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white to-emerald-50">
+                          <div className="flex flex-col md:grid md:grid-cols-2 gap-0 h-full md:h-full cursor-pointer group">
+                            <div className="order-2 md:order-1 flex-1 p-5 md:p-8 flex flex-col justify-start md:justify-center md:h-full bg-gradient-to-br from-white to-emerald-50">
                               <div className="inline-flex items-center gap-2 mb-3">
                                 <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full">Featured Game</span>
                                 <span className="bg-white/90 text-gray-700 text-xs font-bold px-3 py-1 rounded-full">{game.gameType.toUpperCase()}</span>
@@ -275,37 +274,33 @@ export default function Games() {
                             </div>
                           </div>
                         </Link>
-                      </motion.div>
-                    );
-                  } else {
-                    const banner = item.data;
-                    return (
-                      <motion.div
-                        key={`banner-${banner.id}`}
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -50 }}
-                        transition={{ duration: 0.4 }}
-                        className="absolute inset-0 cursor-pointer"
-                        onClick={() => {
-                          // Handle banner click
-                          console.log("Banner clicked:", banner.title);
-                        }}
-                      >
-                         <img 
-                           src={banner.imageUrl} 
-                           alt={banner.title}
-                           className="w-full h-full object-cover scale-110 md:scale-100"
-                         />
-                         <div className="absolute inset-0 bg-black/10 hover:bg-black/0 transition-colors" />
-                         <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-pink-100 text-pink-700 font-bold text-xs tracking-wide">
-                           Weekly Theme
-                         </span>
-                      </motion.div>
-                    );
-                  }
-                })}
+                      );
+                    } else {
+                      const banner = item.data;
+                      return (
+                        <div 
+                          className="w-full h-full relative cursor-pointer group"
+                          onClick={() => {
+                            // Handle banner click
+                            console.log("Banner clicked:", banner.title);
+                          }}
+                        >
+                           <img 
+                             src={banner.imageUrl} 
+                             alt={banner.title}
+                             className="absolute inset-0 w-full h-full object-cover scale-110 md:scale-100"
+                           />
+                           <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                           <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-pink-100 text-pink-700 font-bold text-xs tracking-wide">
+                             Weekly Theme
+                           </span>
+                        </div>
+                      );
+                    }
+                  })()}
+                </motion.div>
               </AnimatePresence>
+
               {allFeaturedItems.length > 1 && (
                 <>
                   <button
