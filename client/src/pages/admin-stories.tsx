@@ -348,15 +348,16 @@ function StoryForm({
       });
 
       if (!uploadRes.ok) {
-        throw new Error('Failed to upload image');
+        const errorData = await uploadRes.json();
+        throw new Error(errorData.message || 'Failed to upload image');
       }
 
       const { imageUrl } = await uploadRes.json();
       setThumbnail(imageUrl);
       toast({ title: "Image uploaded successfully!" });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      toast({ title: "Error", description: "Failed to upload image", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Failed to upload image", variant: "destructive" });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -392,16 +393,17 @@ function StoryForm({
       });
 
       if (!uploadRes.ok) {
-        throw new Error('Failed to upload image');
+        const errorData = await uploadRes.json();
+        throw new Error(errorData.message || 'Failed to upload image');
       }
 
       const { imageUrl } = await uploadRes.json();
       setPendingImageUrl(imageUrl);
       setContentImageCredit("");
       toast({ title: "Image uploaded! Add optional credit below." });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      toast({ title: "Error", description: "Failed to upload image", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Failed to upload image", variant: "destructive" });
     } finally {
       setIsContentImageUploading(false);
       if (contentImageInputRef.current) {

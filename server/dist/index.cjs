@@ -232,6 +232,7 @@ var storyGames = (0, import_pg_core.pgTable)("story_games", {
   linkedStoryTitle: (0, import_pg_core.varchar)("linked_story_title", { length: 255 }),
   pointsReward: (0, import_pg_core.integer)("points_reward").default(10).notNull(),
   config: (0, import_pg_core.jsonb)("config").notNull(),
+  category: (0, import_pg_core.jsonb)("category").$type().default([]).notNull(),
   backgroundMusicUrl: (0, import_pg_core.text)("background_music_url"),
   soundEffectsEnabled: (0, import_pg_core.boolean)("sound_effects_enabled").default(true).notNull(),
   isActive: (0, import_pg_core.boolean)("is_active").default(true).notNull(),
@@ -245,11 +246,15 @@ var storyGames = (0, import_pg_core.pgTable)("story_games", {
 var insertStoryGameSchema = (0, import_drizzle_zod.createInsertSchema)(storyGames).omit({
   createdAt: true,
   updatedAt: true
+}).extend({
+  category: import_zod.z.array(import_zod.z.string())
 });
 var updateStoryGameSchema = (0, import_drizzle_zod.createInsertSchema)(storyGames).omit({
   createdAt: true,
   updatedAt: true
-}).partial();
+}).partial().extend({
+  category: import_zod.z.array(import_zod.z.string()).optional()
+});
 var courseworkItems = (0, import_pg_core.pgTable)("coursework_items", {
   id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
   teacherId: (0, import_pg_core.varchar)("teacher_id").references(() => users.id).notNull(),

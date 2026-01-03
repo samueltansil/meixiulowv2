@@ -61,14 +61,15 @@ export function ImageUploadField({
       });
 
       if (!uploadRes.ok) {
-        throw new Error('Failed to upload image');
+        const errorData = await uploadRes.json();
+        throw new Error(errorData.message || 'Failed to upload image');
       }
 
       const { imageUrl } = await uploadRes.json();
       onChange(imageUrl);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      alert("Failed to upload image");
+      alert(error.message || "Failed to upload image");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {

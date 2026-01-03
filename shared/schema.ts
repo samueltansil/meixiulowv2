@@ -203,6 +203,7 @@ export const storyGames = pgTable("story_games", {
   linkedStoryTitle: varchar("linked_story_title", { length: 255 }),
   pointsReward: integer("points_reward").default(10).notNull(),
   config: jsonb("config").notNull(),
+  category: jsonb("category").$type<string[]>().default([]).notNull(),
   backgroundMusicUrl: text("background_music_url"),
   soundEffectsEnabled: boolean("sound_effects_enabled").default(true).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
@@ -220,12 +221,16 @@ export type StoryGame = typeof storyGames.$inferSelect;
 export const insertStoryGameSchema = createInsertSchema(storyGames).omit({
   createdAt: true,
   updatedAt: true,
+}).extend({
+  category: z.array(z.string()),
 });
 
 export const updateStoryGameSchema = createInsertSchema(storyGames).omit({
   createdAt: true,
   updatedAt: true,
-}).partial();
+}).partial().extend({
+  category: z.array(z.string()).optional(),
+});
 
 // Type definitions for game configs
 export interface PuzzleGameConfig {

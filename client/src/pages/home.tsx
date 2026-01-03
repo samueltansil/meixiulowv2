@@ -59,7 +59,7 @@ export default function Home() {
 
   const filteredArticles = activeCategory === "All" 
     ? stories 
-    : stories.filter(a => a.category === activeCategory);
+    : stories.filter(a => Array.isArray(a.category) ? a.category.includes(activeCategory) : a.category === activeCategory);
 
   const nextSlide = useCallback(() => {
     if (allFeaturedItems.length > 0) {

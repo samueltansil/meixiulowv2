@@ -264,7 +264,10 @@ export default function AdminBanners() {
         throw new Error("Session expired");
       }
 
-      if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Upload failed");
+      }
       
       const data = await res.json();
       form.setValue("imageUrl", data.imageUrl);

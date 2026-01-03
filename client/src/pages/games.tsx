@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { Search, Trophy, Menu, X, Home, Play, Gamepad2, GraduationCap, Settings, Puzzle, Sparkles, Target, HelpCircle, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { CATEGORIES } from "@/lib/data";
 import gamesHero from "@assets/generated_images/kids_games_hero_illustration.png";
 import logo from "@assets/whypals-logo.png";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export default function Games() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string>("All");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { data: games = [], isLoading } = useQuery<StoryGame[]>({
@@ -100,10 +102,12 @@ export default function Games() {
     }
   };
 
-  const filteredGames = games.filter(game => 
-    game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    game.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredGames = games.filter(game => {
+    const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    game.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = activeCategory === "All" || (Array.isArray(game.category) && game.category.includes(activeCategory));
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
@@ -280,10 +284,8 @@ export default function Games() {
                       return (
                         <div 
                           className="w-full h-full relative cursor-pointer group"
-                          onClick={() => {
-                            // Handle banner click
-                            console.log("Banner clicked:", banner.title);
-                          }}
+                          onClick={() => setActiveCategory("Weekly Theme")}
+                          data-testid="featured-banner"
                         >
                            <img 
                              src={banner.imageUrl} 
@@ -343,7 +345,46 @@ export default function Games() {
           )}
         </div>
 
-        <h2 className="font-heading text-2xl font-bold mb-6">All Games</h2>
+        {/* Category Scroll */}
+        <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-hide snap-x mb-4" data-testid="category-scroll">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setActiveCategory("All")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-2xl whitespace-nowrap font-bold shadow-sm transition-all snap-start ${
+              activeCategory === "All" 
+                ? "bg-primary text-white shadow-primary/25" 
+                : "bg-white text-muted-foreground hover:bg-gray-50"
+            }`}
+          >
+            <Menu className="w-5 h-5" />
+            All Games
+          </motion.button>
+          
+          {CATEGORIES.map((cat: any) => {
+            const Icon = cat.icon;
+            const isActive = activeCategory === cat.id;
+            return (
+              <motion.button
+                key={cat.id}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl whitespace-nowrap font-bold shadow-sm transition-all snap-start ${
+                  isActive 
+                    ? "bg-primary text-white shadow-primary/25" 
+                    : "bg-white text-muted-foreground hover:bg-gray-50"
+                }`}
+                data-testid={`category-btn-${cat.id}`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? "text-white" : ""}`} />
+                {cat.label}
+              </motion.button>
+            );
+          })}
+        </div>
+
+        <h2 className="font-heading text-2xl font-bold mb-6">{activeCategory === "All" ? "All Games" : `${activeCategory} Games`}</h2>
 
         {isLoading ? (
           <div className="text-center py-12">

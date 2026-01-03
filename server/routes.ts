@@ -692,9 +692,10 @@ export async function registerRoutes(
       
       const imageUrl = `/api/images/${key}`;
       res.json({ imageUrl, key });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading image:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      const message = error.message?.includes("configured") ? error.message : "Failed to upload image";
+      res.status(500).json({ message });
     }
   });
 
@@ -718,9 +719,10 @@ export async function registerRoutes(
       
       const imageUrl = `/api/images/${key}`;
       res.json({ imageUrl, key });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading game image:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      const message = error.message?.includes("configured") ? error.message : "Failed to upload image";
+      res.status(500).json({ message });
     }
   });
 
@@ -744,9 +746,10 @@ export async function registerRoutes(
       
       const imageUrl = `/api/images/${key}`;
       res.json({ imageUrl, key });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading story content image:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      const message = error.message?.includes("configured") ? error.message : "Failed to upload image";
+      res.status(500).json({ message });
     }
   });
 
@@ -770,9 +773,10 @@ export async function registerRoutes(
       
       const imageUrl = `/api/images/${key}`;
       res.json({ imageUrl, key });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading video thumbnail:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      const message = error.message?.includes("configured") ? error.message : "Failed to upload image";
+      res.status(500).json({ message });
     }
   });
 
