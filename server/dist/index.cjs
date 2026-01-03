@@ -75,6 +75,7 @@ var import_drizzle_orm = require("drizzle-orm");
 var import_pg_core = require("drizzle-orm/pg-core");
 var import_drizzle_orm2 = require("drizzle-orm");
 var import_drizzle_zod = require("drizzle-zod");
+var import_zod = require("zod");
 var sessions = (0, import_pg_core.pgTable)(
   "sessions",
   {
@@ -210,11 +211,15 @@ var insertR2VideoMetadataSchema = (0, import_drizzle_zod.createInsertSchema)(r2V
 var insertStorySchema = (0, import_drizzle_zod.createInsertSchema)(stories).omit({
   createdAt: true,
   updatedAt: true
+}).extend({
+  category: import_zod.z.array(import_zod.z.string())
 });
 var updateStorySchema = (0, import_drizzle_zod.createInsertSchema)(stories).omit({
   createdAt: true,
   updatedAt: true
-}).partial();
+}).partial().extend({
+  category: import_zod.z.array(import_zod.z.string()).optional()
+});
 var storyGames = (0, import_pg_core.pgTable)("story_games", {
   id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
   gameType: (0, import_pg_core.varchar)("game_type", { length: 50 }).notNull(),

@@ -4,23 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, RotateCcw, HelpCircle, CheckCircle, XCircle, ArrowRight } from "lucide-react";
 import type { QuizGameConfig } from "@shared/schema";
-import { useGameAudio } from "@/hooks/useGameAudio";
 
 interface QuizQuestProps {
   config: QuizGameConfig;
   onComplete?: (points: number) => void;
-  backgroundMusicUrl?: string | null;
-  soundEffectsEnabled?: boolean;
 }
 
-export function QuizQuest({ config, onComplete, backgroundMusicUrl, soundEffectsEnabled = true }: QuizQuestProps) {
+export function QuizQuest({ config, onComplete }: QuizQuestProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [score, setScore] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [answers, setAnswers] = useState<boolean[]>([]);
-  const { playSound } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
 
   const question = config.questions[currentQuestion];
   const passingScore = config.passingScore ?? Math.ceil(config.questions.length * 0.6);
@@ -29,22 +25,17 @@ export function QuizQuest({ config, onComplete, backgroundMusicUrl, soundEffects
   const handleAnswerSelect = (index: number) => {
     if (showResult) return;
     
-    playSound('click');
     setSelectedAnswer(index);
     setShowResult(true);
     
     const correct = index === question.correctIndex;
     if (correct) {
-      playSound('correct');
       setScore(s => s + 1);
-    } else {
-      playSound('error');
     }
     setAnswers([...answers, correct]);
   };
 
   const handleNext = () => {
-    playSound('click');
     if (currentQuestion < config.questions.length - 1) {
       setCurrentQuestion(c => c + 1);
       setSelectedAnswer(null);
@@ -59,7 +50,6 @@ export function QuizQuest({ config, onComplete, backgroundMusicUrl, soundEffects
   };
 
   const resetGame = () => {
-    playSound('click');
     setCurrentQuestion(0);
     setSelectedAnswer(null);
     setShowResult(false);
