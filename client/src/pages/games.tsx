@@ -183,20 +183,18 @@ export default function Games() {
                       </Link>
                     );
                   })}
-                  {user && (
-                    <>
-                      <div className="border-t my-4" />
-                      <Link 
-                        href="/settings" 
-                        onClick={() => setMobileMenuOpen(false)} 
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-semibold ${
-                          location === "/settings" ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        <Settings className="w-5 h-5" /> Settings
-                      </Link>
-                    </>
-                  )}
+                  <>
+                    <div className="border-t my-4" />
+                    <Link 
+                      href={user ? "/settings" : "/login"} 
+                      onClick={() => setMobileMenuOpen(false)} 
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-semibold ${
+                        user && location === "/settings" ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      <Settings className="w-5 h-5" /> Settings
+                    </Link>
+                  </>
                 </nav>
               </SheetContent>
             </Sheet>

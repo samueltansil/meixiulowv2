@@ -61,6 +61,10 @@ function Router() {
       <Switch>
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
+        <Route path="/" component={Home} />
+        <Route path="/videos" component={Videos} />
+        <Route path="/games" component={Games} />
+        <Route path="/story/:id" component={Story} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
         <Route path="/admin/stories" component={AdminStories} />
@@ -68,7 +72,6 @@ function Router() {
         <Route path="/admin/games" component={AdminGames} />
         <Route path="/admin/teachers" component={AdminTeachers} />
         <Route path="/admin/banners" component={AdminBanners} />
-        <Route path="/" component={Home} />
         <Route component={Home} />
       </Switch>
     );
