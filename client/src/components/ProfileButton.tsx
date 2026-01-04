@@ -14,7 +14,7 @@ export default function ProfileButton() {
   if (!user) {
     return (
       <Link 
-        href="/auth"
+        href="/login"
         className="w-10 h-10 rounded-full border-2 border-primary/30 flex items-center justify-center hover:border-primary hover:bg-primary/5 transition-all"
       >
         <User className="w-5 h-5 text-primary/70" />

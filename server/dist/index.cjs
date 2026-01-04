@@ -659,12 +659,13 @@ function getSession() {
   const databaseUrl2 = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
   const sessionStore = new pgStore({
     conString: databaseUrl2,
-    createTableIfMissing: false,
+    createTableIfMissing: true,
     ttl: sessionTtl,
     tableName: "sessions"
   });
-  const isProduction = process.env.NODE_ENV === "production";
-  console.log(`Session config: secure=${isProduction}, sameSite=${isProduction ? "strict" : "lax"}`);
+  const cookieSecure = process.env.COOKIE_SECURE === "true";
+  const sameSite = cookieSecure ? "strict" : "lax";
+  console.log(`Session config: secure=${cookieSecure}, sameSite=${sameSite}`);
   return (0, import_express_session.default)({
     secret: process.env.SESSION_SECRET,
     store: sessionStore,
@@ -672,9 +673,9 @@ function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProduction,
+      secure: cookieSecure,
       maxAge: sessionTtl,
-      sameSite: isProduction ? "strict" : "lax"
+      sameSite
     }
   });
 }
@@ -1376,7 +1377,8 @@ async function registerRoutes(httpServer2, app2) {
       res.json({ imageUrl, key });
     } catch (error) {
       console.error("Error uploading image:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      const message = error.message?.includes("configured") ? error.message : "Failed to upload image";
+      res.status(500).json({ message });
     }
   });
   app2.post("/api/admin/upload/game-image", upload.single("image"), async (req, res) => {
@@ -1397,7 +1399,8 @@ async function registerRoutes(httpServer2, app2) {
       res.json({ imageUrl, key });
     } catch (error) {
       console.error("Error uploading game image:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      const message = error.message?.includes("configured") ? error.message : "Failed to upload image";
+      res.status(500).json({ message });
     }
   });
   app2.post("/api/admin/upload/story-content-image", upload.single("image"), async (req, res) => {
@@ -1418,7 +1421,8 @@ async function registerRoutes(httpServer2, app2) {
       res.json({ imageUrl, key });
     } catch (error) {
       console.error("Error uploading story content image:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      const message = error.message?.includes("configured") ? error.message : "Failed to upload image";
+      res.status(500).json({ message });
     }
   });
   app2.post("/api/admin/upload/video-thumbnail", upload.single("image"), async (req, res) => {
@@ -1439,7 +1443,8 @@ async function registerRoutes(httpServer2, app2) {
       res.json({ imageUrl, key });
     } catch (error) {
       console.error("Error uploading video thumbnail:", error);
-      res.status(500).json({ message: "Failed to upload image" });
+      const message = error.message?.includes("configured") ? error.message : "Failed to upload image";
+      res.status(500).json({ message });
     }
   });
   app2.post("/api/admin/upload/banner", upload.single("image"), async (req, res) => {

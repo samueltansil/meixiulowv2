@@ -9,13 +9,14 @@ export function getSession() {
   
   const sessionStore = new pgStore({
     conString: databaseUrl,
-    createTableIfMissing: false,
+    createTableIfMissing: true,
     ttl: sessionTtl,
     tableName: "sessions",
   });
   
-  const isProduction = process.env.NODE_ENV === "production";
-  console.log(`Session config: secure=${isProduction}, sameSite=${isProduction ? "strict" : "lax"}`);
+  const cookieSecure = process.env.COOKIE_SECURE === "true";
+  const sameSite = cookieSecure ? "strict" : "lax";
+  console.log(`Session config: secure=${cookieSecure}, sameSite=${sameSite}`);
   
   return session({
     secret: process.env.SESSION_SECRET!,
@@ -24,9 +25,9 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProduction,
+      secure: cookieSecure,
       maxAge: sessionTtl,
-      sameSite: isProduction ? "strict" : "lax",
+      sameSite: sameSite as any,
     },
   });
 }

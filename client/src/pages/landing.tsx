@@ -13,7 +13,7 @@ export default function Landing() {
           transition={{ delay: 0.2 }}
           className="font-heading text-6xl md:text-8xl font-bold text-primary leading-none mb-0"
         >
-          Welcome to
+          
         </motion.h1>
         <motion.div
           initial={{ scale: 0 }}

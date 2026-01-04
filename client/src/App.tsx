@@ -9,7 +9,6 @@ import Games from "@/pages/games";
 import Videos from "@/pages/videos";
 import Teachers from "@/pages/teachers";
 import Settings from "@/pages/settings";
-import Landing from "@/pages/landing";
 import Story from "@/pages/story";
 import VideoPlayer from "@/pages/video-player";
 import R2VideoPlayer from "@/pages/r2-video-player";
@@ -69,8 +68,8 @@ function Router() {
         <Route path="/admin/games" component={AdminGames} />
         <Route path="/admin/teachers" component={AdminTeachers} />
         <Route path="/admin/banners" component={AdminBanners} />
-        <Route path="/" component={Landing} />
-        <Route component={Landing} />
+        <Route path="/" component={Home} />
+        <Route component={Home} />
       </Switch>
     );
   }
