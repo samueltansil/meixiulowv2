@@ -819,6 +819,9 @@ function generateAdminToken() {
   return (0, import_crypto.randomBytes)(32).toString("hex");
 }
 function isValidAdminSession(req) {
+  if (req.session?.isAdmin && req.session.adminExpiresAt && Date.now() < req.session.adminExpiresAt) {
+    return true;
+  }
   const token = req.headers["x-admin-token"] || req.cookies?.adminToken;
   if (!token) return false;
   const session2 = adminSessions.get(token);
@@ -875,7 +878,16 @@ async function registerRoutes(httpServer2, app2) {
       if (password === ADMIN_PASSWORD) {
         const token = generateAdminToken();
         adminSessions.set(token, { expiresAt: Date.now() + ADMIN_SESSION_EXPIRY });
-        return res.json({ success: true, token });
+        req.session.isAdmin = true;
+        req.session.adminExpiresAt = Date.now() + ADMIN_SESSION_EXPIRY;
+        req.session.save((err) => {
+          if (err) {
+            console.error("Error saving admin session:", err);
+            return res.status(500).json({ message: "Login failed" });
+          }
+          return res.json({ success: true, token });
+        });
+        return;
       }
       return res.status(401).json({ message: "Invalid password" });
     } catch (error) {
