@@ -39,21 +39,29 @@ function clearStoredToken(): void {
 }
 
 async function validateSession(): Promise<boolean> {
-  const token = getStoredToken();
-  if (!token) return false;
-  
   try {
-    const res = await fetch("/api/admin/session", {
-      headers: { "x-admin-token": token },
+    const sessionRes = await fetch("/api/admin/session", {
+      credentials: "same-origin",
     });
-    if (!res.ok) {
-      clearStoredToken();
-      return false;
+    if (sessionRes.ok) {
+      return true;
     }
-    return true;
-  } catch {
-    return false;
+  } catch {}
+  
+  const token = getStoredToken();
+  if (token) {
+    try {
+      const res = await fetch("/api/admin/session", {
+        headers: { "x-admin-token": token },
+        credentials: "same-origin",
+      });
+      if (res.ok) {
+        return true;
+      }
+    } catch {}
+    clearStoredToken();
   }
+  return false;
 }
 
 function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -72,6 +80,7 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
+        credentials: "same-origin",
       });
 
       if (res.ok) {
@@ -1185,7 +1194,7 @@ export default function AdminGames() {
     return matchesSearch && matchesType;
   });
 
-  if (!isAuthenticated || error) {
+  if (!isAuthenticated) {
     return <AdminLoginDialog onSuccess={() => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
       setIsAuthenticated(true);
