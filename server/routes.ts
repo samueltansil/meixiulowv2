@@ -1109,7 +1109,8 @@ export async function registerRoutes(
       res.status(201).json(game);
     } catch (error) {
       console.error("Error creating game:", error);
-      res.status(500).json({ message: "Failed to create game" });
+      const message = error instanceof Error ? error.message : "Failed to create game";
+      res.status(500).json({ message });
     }
   });
 
@@ -1135,7 +1136,8 @@ export async function registerRoutes(
       res.json(game);
     } catch (error) {
       console.error("Error updating game:", error);
-      res.status(500).json({ message: "Failed to update game" });
+      const message = error instanceof Error ? error.message : "Failed to update game";
+      res.status(500).json({ message });
     }
   });
 

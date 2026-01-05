@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@assets/whypals-logo.png";
 import type { StoryGame, PuzzleGameConfig, WhackGameConfig, MatchGameConfig, QuizGameConfig, TimelineGameConfig } from "@shared/schema";
+import { CATEGORIES as ALL_CATEGORIES } from "@/lib/data";
 
 const GAME_TYPES = [
   { value: "puzzle", label: "Puzzle", icon: "🧩" },
@@ -25,6 +26,7 @@ const GAME_TYPES = [
 ];
 
 const ADMIN_TOKEN_KEY = 'newspals_admin_token';
+const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
 
 function getStoredToken(): string | null {
   return sessionStorage.getItem(ADMIN_TOKEN_KEY);
@@ -756,6 +758,11 @@ function GameForm({
   const [config, setConfig] = useState<any>(game?.config || getDefaultConfig("puzzle"));
   const [backgroundMusicUrl, setBackgroundMusicUrl] = useState((game as any)?.backgroundMusicUrl || "");
   const [soundEffectsEnabled, setSoundEffectsEnabled] = useState((game as any)?.soundEffectsEnabled !== false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    game?.category
+      ? (Array.isArray(game.category) ? game.category : [game.category as any])
+      : ["Science"]
+  );
 
   function getDefaultConfig(type: string): any {
     switch (type) {
@@ -788,21 +795,23 @@ function GameForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
+    const payload: any = {
       title,
       description,
       thumbnail,
       funFacts,
       howToPlay,
-      linkedStoryTitle: linkedStoryTitle || null,
-      pointsReward,
+      pointsReward: Number.isFinite(pointsReward) ? pointsReward : 10,
       gameType,
       isActive,
       isFeatured,
       config,
-      backgroundMusicUrl: backgroundMusicUrl || null,
       soundEffectsEnabled,
-    });
+      category: selectedCategories,
+    };
+    if (linkedStoryTitle) payload.linkedStoryTitle = linkedStoryTitle;
+    if (backgroundMusicUrl) payload.backgroundMusicUrl = backgroundMusicUrl;
+    onSave(payload);
   };
 
   return (
@@ -879,6 +888,58 @@ function GameForm({
               placeholder="Enter the exact story title to link this game"
             />
             <p className="text-xs text-muted-foreground">Leave empty if not linked to a specific story</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Primary Category</Label>
+              <Select 
+                value={selectedCategories[0]} 
+                onValueChange={(val) => {
+                  const newCats = [...selectedCategories];
+                  newCats[0] = val;
+                  setSelectedCategories(newCats);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Secondary Category (Optional)</Label>
+              <Select 
+                value={selectedCategories[1] || "none"} 
+                onValueChange={(val) => {
+                  if (val === "none") {
+                    setSelectedCategories([selectedCategories[0]]);
+                  } else {
+                    const newCats = [...selectedCategories];
+                    newCats[1] = val;
+                    setSelectedCategories(newCats);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select second category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {CATEGORIES.filter(c => c !== selectedCategories[0]).map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex items-center gap-4 pt-2">
@@ -1122,8 +1183,19 @@ export default function AdminGames() {
         body: JSON.stringify(data),
       });
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create game");
+        let message = "";
+        try {
+          const raw = await res.text();
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed.message || raw;
+          } catch {
+            message = raw || res.statusText;
+          }
+        } catch {
+          message = res.statusText || "Unknown error";
+        }
+        throw new Error(`HTTP ${res.status}: ${message}`);
       }
       return res.json();
     },
@@ -1146,8 +1218,19 @@ export default function AdminGames() {
         body: JSON.stringify(data),
       });
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update game");
+        let message = "";
+        try {
+          const raw = await res.text();
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed.message || raw;
+          } catch {
+            message = raw || res.statusText;
+          }
+        } catch {
+          message = res.statusText || "Unknown error";
+        }
+        throw new Error(`HTTP ${res.status}: ${message}`);
       }
       return res.json();
     },

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@assets/whypals-logo.png";
-import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,12 +17,13 @@ export default function Login() {
   const { login, isLoggingIn, isAuthenticated, needsRoleSelection } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const redirectParam = new URLSearchParams(window.location.search).get("redirect") || null;
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(needsRoleSelection ? "/select-role" : "/");
+      navigate(needsRoleSelection ? "/select-role" : (redirectParam || "/"));
     }
-  }, [isAuthenticated, needsRoleSelection, navigate]);
+  }, [isAuthenticated, needsRoleSelection, navigate, redirectParam]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +38,7 @@ export default function Login() {
         if (result.needsRoleSelection) {
           navigate("/select-role");
         } else {
-          navigate("/");
+          navigate(redirectParam || "/");
         }
       }
     } catch (error: any) {
@@ -50,7 +51,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 left-4">
+        <Link href="/">
+          <Button variant="ghost" size="sm" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to home
+          </Button>
+        </Link>
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

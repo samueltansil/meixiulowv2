@@ -15,6 +15,7 @@ import QuizGame from "@/components/games/QuizGame";
 import TimelineGame from "@/components/games/TimelineGame";
 import { useGameAudio } from "@/hooks/useGameAudio";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useAuth } from "@/hooks/useAuth";
 
 const GAME_TYPE_ICONS: Record<string, typeof Puzzle> = {
   puzzle: Puzzle,
@@ -38,6 +39,7 @@ export default function GamePreview() {
   const [, navigate] = useLocation();
   const { points, refetchPoints, addPoints } = usePoints();
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
   const [gameStarted, setGameStarted] = useState(false);
   const [gameCompleted, setGameCompleted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
@@ -64,6 +66,11 @@ export default function GamePreview() {
   });
 
   const handleStartGame = () => {
+    if (!isAuthenticated) {
+      toast({ title: "Log in to play game" });
+      navigate(`/login?redirect=${encodeURIComponent(`/game/${gameId}`)}`);
+      return;
+    }
     startBackgroundMusic();
     setGameStarted(true);
     setGameCompleted(false);

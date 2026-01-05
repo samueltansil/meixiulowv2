@@ -1732,7 +1732,8 @@ async function registerRoutes(httpServer2, app2) {
       res.status(201).json(game);
     } catch (error) {
       console.error("Error creating game:", error);
-      res.status(500).json({ message: "Failed to create game" });
+      const message = error instanceof Error ? error.message : "Failed to create game";
+      res.status(500).json({ message });
     }
   });
   app2.put("/api/admin/games/:id", async (req, res) => {
@@ -1754,7 +1755,8 @@ async function registerRoutes(httpServer2, app2) {
       res.json(game);
     } catch (error) {
       console.error("Error updating game:", error);
-      res.status(500).json({ message: "Failed to update game" });
+      const message = error instanceof Error ? error.message : "Failed to update game";
+      res.status(500).json({ message });
     }
   });
   app2.delete("/api/admin/games/:id", async (req, res) => {
