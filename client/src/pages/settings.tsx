@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Search, LogOut, User, Bell, Shield, CreditCard, Menu, X, Home, Play, Gamepad2, GraduationCap, Settings as SettingsIcon, BookOpen, Users, AlertTriangle, Lock, Eye, EyeOff, ChevronRight, Check, Loader2 } from "lucide-react";
+import { Search, LogOut, User, Bell, Shield, CreditCard, Menu, X, Home, Gamepad2, GraduationCap, Settings as SettingsIcon, BookOpen, Users, AlertTriangle, Lock, Eye, EyeOff, ChevronRight, Check, Loader2 } from "lucide-react";
 import logo from "@assets/whypals-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,7 +166,6 @@ export default function Settings() {
 
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
-    { href: "/videos", label: "Videos", icon: Play },
     { href: "/games", label: "Games", icon: Gamepad2 },
   ];
 
@@ -190,7 +189,6 @@ export default function Settings() {
           
           <div className="hidden md:flex items-center gap-8 font-heading font-semibold text-muted-foreground">
              <Link href="/" className="hover:text-primary transition-colors">Home</Link>
-             <Link href="/videos" className="hover:text-primary transition-colors">Videos</Link>
              <Link href="/games" className="hover:text-primary transition-colors">Games</Link>
           </div>
 
@@ -355,7 +353,7 @@ export default function Settings() {
 
             <motion.div
               whileHover={{ x: 5 }}
-              onClick={() => setShowPrivacyDialog(true)}
+              onClick={() => navigate("/about")}
               className="bg-white rounded-2xl p-6 shadow-sm border border-border flex items-center gap-4 cursor-pointer hover:border-primary/30 transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">

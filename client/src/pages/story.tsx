@@ -582,7 +582,7 @@ export default function StoryPage() {
               <span className="font-heading text-xl font-bold text-muted-foreground">WhyPals</span>
             </div>
             <div className="flex gap-8 text-sm font-semibold text-muted-foreground">
-              <Link href="/about" className="hover:text-primary transition-colors">About Us</Link>
+              <Link href="/about" className="hover:text-primary transition-colors">Privacy & Safety</Link>
               <Link href="/contact" className="hover:text-primary transition-colors">Contact</Link>
             </div>
             <p className="text-xs text-muted-foreground/50">
