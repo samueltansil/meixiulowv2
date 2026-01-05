@@ -311,9 +311,7 @@ export default function StoryPage() {
           
           <div className="hidden md:flex items-center gap-8 font-heading font-semibold text-muted-foreground">
             <Link href="/" className="text-primary transition-colors">Home</Link>
-            <Link href="/videos" className="hover:text-primary transition-colors">Videos</Link>
             <Link href="/games" className="hover:text-primary transition-colors">Games</Link>
-            <Link href="/teachers" className="hover:text-primary transition-colors">Marketplace</Link>
           </div>
         </div>
       </nav>

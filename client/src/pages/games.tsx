@@ -89,7 +89,6 @@ export default function Games() {
 
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
-    { href: "/videos", label: "Videos", icon: Play },
     { href: "/games", label: "Games", icon: Gamepad2 },
   ];
 
@@ -120,7 +119,6 @@ export default function Games() {
           
           <div className="hidden md:flex items-center gap-8 font-heading font-semibold text-muted-foreground">
              <Link href="/" className="hover:text-primary transition-colors">Home</Link>
-             <Link href="/videos" className="hover:text-primary transition-colors">Videos</Link>
              <Link href="/games" className="text-primary transition-colors">Games</Link>
           </div>
 

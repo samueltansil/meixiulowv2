@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Menu, ChevronLeft, ChevronRight, X, Home as HomeIcon, Play, Gamepad2, GraduationCap, Settings, Star } from "lucide-react";
+import { Search, Menu, ChevronLeft, ChevronRight, X, Home as HomeIcon, Gamepad2, GraduationCap, Settings, Star } from "lucide-react";
 import logo from "@assets/whypals-logo.png";
 import { CATEGORIES } from "@/lib/data";
 import { NewsCard } from "@/components/news-card";
@@ -27,7 +27,6 @@ export default function Home() {
 
   const navLinks = [
     { href: "/", label: "Home", icon: HomeIcon },
-    { href: "/videos", label: "Videos", icon: Play },
     { href: "/games", label: "Games", icon: Gamepad2 },
   ];
 
@@ -99,7 +98,6 @@ export default function Home() {
 
           <div className="hidden md:flex items-center gap-8 font-heading font-semibold text-muted-foreground">
             <Link href="/" className="text-primary hover:text-primary transition-colors">Home</Link>
-            <Link href="/videos" className="hover:text-primary transition-colors">Videos</Link>
             <Link href="/games" className="hover:text-primary transition-colors">Games</Link>
           </div>
 
