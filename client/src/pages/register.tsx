@@ -204,26 +204,12 @@ export default function Register() {
                 />
                 <div className="text-sm">
                   <Label htmlFor="terms" className="cursor-pointer">
-                    I agree to the{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowTermsDialog(true)}
-                      className="text-primary font-semibold hover:underline"
-                    >
-                      Terms of Service
-                    </button>{" "}
-                    and{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowTermsDialog(true)}
-                      className="text-primary font-semibold hover:underline"
-                    >
-                      Privacy Policy
-                    </button>
+                    i agree to the{" "}
+                    <Link href="/about?from=register" className="text-primary font-semibold hover:underline">
+                      terms & conditions
+                    </Link>
+                    .
                   </Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    WhyPals is a safe platform designed for children
-                  </p>
                 </div>
               </div>
             </CardContent>
