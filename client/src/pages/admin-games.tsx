@@ -413,6 +413,24 @@ function WhackConfigEditor({ config, onChange }: { config: WhackGameConfig; onCh
           />
         </div>
       </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Hole Outer Color</Label>
+          <Input
+            type="color"
+            value={config.holeOuterColor || "#9CA3AF"}
+            onChange={(e) => onChange({ ...config, holeOuterColor: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Hole Inner Color</Label>
+          <Input
+            type="color"
+            value={config.holeInnerColor || "#7B4B32"}
+            onChange={(e) => onChange({ ...config, holeInnerColor: e.target.value })}
+          />
+        </div>
+      </div>
       <MultiImageUploadField
         label="Distractor Images"
         values={config.distractorImages || []}

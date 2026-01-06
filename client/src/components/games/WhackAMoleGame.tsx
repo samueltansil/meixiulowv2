@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Play, Volume2, VolumeX } from "lucide-react";
+import { Play, Volume2, VolumeX, CheckCircle, XCircle } from "lucide-react";
 import type { WhackGameConfig } from "@shared/schema";
 import { useGameAudio } from "@/hooks/useGameAudio";
 import CongratulationsScreen from "./CongratulationsScreen";
@@ -39,14 +39,21 @@ export default function WhackAMoleGame({
   const [hits, setHits] = useState(0);
   const [misses, setMisses] = useState(0);
   const [moles, setMoles] = useState<Mole[]>([]);
+  const [markers, setMarkers] = useState<{ id: number; position: number; isHit: boolean }[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const moleIdRef = useRef(0);
+  const markerIdRef = useRef(0);
   const playTimeRef = useRef(0);
   const [containerSize, setContainerSize] = useState(480);
   
   const { playSound, startBackgroundMusic, setBackgroundMusicMuted } = useGameAudio({ backgroundMusicUrl, soundEffectsEnabled });
   const [isMuted, setIsMuted] = useState(false);
+
+  const isImageUrl = (str?: string) => {
+    if (!str) return false;
+    return str.startsWith("http") || str.startsWith("/") || str.startsWith("data:") || str.includes(".");
+  };
 
   const GRID_SIZE = 9;
   const MOLE_DURATION = 2200;
@@ -141,6 +148,11 @@ export default function WhackAMoleGame({
       setMisses(prev => prev + 1);
     }
     setMoles(prev => prev.filter(m => m.id !== mole.id));
+    const marker = { id: markerIdRef.current++, position: mole.position, isHit: mole.isTarget };
+    setMarkers(prev => [...prev, marker]);
+    setTimeout(() => {
+      setMarkers(prev => prev.filter(m => m.id !== marker.id));
+    }, 500);
   };
 
   if (!gameStarted) {
@@ -159,13 +171,21 @@ export default function WhackAMoleGame({
         <div className="flex gap-8 items-center">
           <div className="text-center">
             <div className="w-24 h-24 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-2">
-              <span className="text-5xl">🎯</span>
+              {isImageUrl(config.targetImage) ? (
+                <img src={config.targetImage} alt={config.targetLabel} className="w-16 h-16 object-contain" />
+              ) : (
+                <span className="text-5xl">{config.targetImage || "🎯"}</span>
+              )}
             </div>
             <span className="text-green-600 font-medium">Tap me! +10</span>
           </div>
           <div className="text-center">
             <div className="w-24 h-24 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-2">
-              <span className="text-5xl">❌</span>
+              {isImageUrl(config.distractorImages?.[0]) ? (
+                <img src={config.distractorImages?.[0] || ""} alt="Avoid" className="w-16 h-16 object-contain" />
+              ) : (
+                <span className="text-5xl">{config.distractorImages?.[0] || "❌"}</span>
+              )}
             </div>
             <span className="text-red-500 font-medium">Avoid! -5</span>
           </div>
@@ -236,10 +256,17 @@ export default function WhackAMoleGame({
           return (
             <div
               key={index}
-              className="relative bg-amber-800/40 rounded-full flex items-center justify-center overflow-hidden"
-              style={{ width: `${cellSize}px`, height: `${cellSize}px` }}
+              className="relative rounded-full flex items-center justify-center overflow-hidden"
+              style={{ 
+                width: `${cellSize}px`, 
+                height: `${cellSize}px`,
+                backgroundColor: (config.holeOuterColor || '#9CA3AF') 
+              }}
             >
-              <div className="w-3/4 h-1/2 bg-amber-900/60 rounded-full absolute bottom-2" />
+              <div 
+                className="w-3/4 h-1/2 rounded-full absolute bottom-2" 
+                style={{ backgroundColor: (config.holeInnerColor || '#7B4B32') }}
+              />
               
               <AnimatePresence>
                 {mole && (
@@ -256,15 +283,33 @@ export default function WhackAMoleGame({
                       <img 
                         src={mole.imageUrl} 
                         alt={mole.label}
-                        className={`w-16 h-16 md:w-20 md:h-20 object-contain drop-shadow-lg ${mole.isTarget ? '' : 'grayscale opacity-70'}`}
+                        className={`w-16 h-16 md:w-20 md:h-20 object-contain drop-shadow-lg ${mole.isTarget ? '' : 'grayscale'}`}
                       />
                     ) : (
-                      <span className={`text-5xl md:text-6xl drop-shadow-lg ${mole.isTarget ? '' : 'grayscale opacity-70'}`}>
+                      <span className={`text-5xl md:text-6xl drop-shadow-lg ${mole.isTarget ? '' : 'grayscale'}`}>
                         {mole.imageUrl || (mole.isTarget ? '🎯' : '❌')}
                       </span>
                     )}
                   </motion.button>
                 )}
+              </AnimatePresence>
+              <AnimatePresence>
+                {markers.filter(m => m.position === index).map((m) => (
+                  <motion.div
+                    key={`marker-${m.id}`}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute inset-0 flex items-center justify-center z-20"
+                  >
+                    {m.isHit ? (
+                      <CheckCircle className="w-12 h-12 text-green-500 drop-shadow-lg" />
+                    ) : (
+                      <XCircle className="w-12 h-12 text-red-500 drop-shadow-lg" />
+                    )}
+                  </motion.div>
+                ))}
               </AnimatePresence>
             </div>
           );

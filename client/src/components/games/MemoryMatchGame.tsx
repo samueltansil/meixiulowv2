@@ -114,6 +114,7 @@ export default function MemoryMatchGame({
   }, [isComplete, onTimeUpdate]);
 
   useEffect(() => {
+    if (isComplete) return;
     if (matches === config.pairs.length && matches > 0) {
       setIsComplete(true);
       const baseScore = 100;
@@ -123,7 +124,7 @@ export default function MemoryMatchGame({
       setFinalScore(calculatedScore);
       onComplete(calculatedScore);
     }
-  }, [matches, config.pairs.length, moves, gameTime, onComplete]);
+  }, [matches, config.pairs.length, moves, gameTime, onComplete, isComplete]);
 
   const handleCardClick = (cardId: string) => {
     if (isChecking) return;
