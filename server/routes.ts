@@ -197,7 +197,8 @@ export async function registerRoutes(
 
       // Send email
       if (user.email) {
-          await sendPasswordResetEmail(user.email, token);
+          const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+          await sendPasswordResetEmail(user.email, token, origin);
       }
 
       res.json({ message: "If an account with that email exists, we have sent a password reset link." });

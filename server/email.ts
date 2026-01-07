@@ -10,14 +10,14 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendPasswordResetEmail(email: string, token: string) {
+export async function sendPasswordResetEmail(email: string, token: string, origin: string = 'https://whypals.com') {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.warn('SMTP credentials not found in environment variables. Email sending skipped.');
     console.log(`Mock email to ${email}: Token is ${token}`);
     return false;
   }
 
-  const resetLink = `https://whypals.com/reset-password?token=${token}`;
+  const resetLink = `${origin}/reset-password?token=${token}`;
 
   const mailOptions = {
     from: `"WhyPals Support" <${process.env.SMTP_USER}>`,
