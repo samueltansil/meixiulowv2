@@ -26,6 +26,8 @@ import Leaderboard from "@/pages/leaderboard";
 import VerifyTeacher from "@/pages/verify-teacher";
 import Register from "@/pages/register";
 import Login from "@/pages/login";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import SelectRole from "@/pages/select-role";
 import About from "@/pages/about";
 import Contact from "@/pages/contact";
@@ -50,6 +52,8 @@ function Router() {
       <Switch>
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/select-role" component={SelectRole} />
         <Route component={LoadingScreen} />
       </Switch>
@@ -61,6 +65,8 @@ function Router() {
       <Switch>
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/" component={Home} />
         <Route path="/videos" component={Videos} />
         <Route path="/games" component={Games} />

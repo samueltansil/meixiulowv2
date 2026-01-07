@@ -25,6 +25,9 @@ import {
   banners,
   type Banner,
   type InsertBanner,
+  passwordResetTokens,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -106,6 +109,12 @@ export interface IStorage {
   insertBanner(banner: InsertBanner): Promise<Banner>;
   deleteBanner(id: number): Promise<void>;
   updateBanner(id: number, banner: Partial<InsertBanner>): Promise<Banner>;
+
+  // Password Reset
+  createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(tokenHash: string): Promise<PasswordResetToken | undefined>;
+  deletePasswordResetToken(id: number): Promise<void>;
+  deletePasswordResetTokensByUserId(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -596,6 +605,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(banners.id, id))
       .returning();
     return banner;
+  }
+
+  async createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [token] = await db.insert(passwordResetTokens).values(tokenData).returning();
+    return token;
+  }
+
+  async getPasswordResetToken(tokenHash: string): Promise<PasswordResetToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.tokenHash, tokenHash));
+    return token;
+  }
+
+  async deletePasswordResetToken(id: number): Promise<void> {
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.id, id));
+  }
+
+  async deletePasswordResetTokensByUserId(userId: string): Promise<void> {
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
   }
 }
 

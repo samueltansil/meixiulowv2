@@ -55,6 +55,7 @@ __export(schema_exports, {
   insertStorySchema: () => insertStorySchema,
   insertSubscriptionSchema: () => insertSubscriptionSchema,
   insertVideoSchema: () => insertVideoSchema,
+  passwordResetTokens: () => passwordResetTokens,
   r2VideoMetadata: () => r2VideoMetadata,
   sessions: () => sessions,
   stories: () => stories,
@@ -84,6 +85,13 @@ var sessions = (0, import_pg_core.pgTable)(
     expire: (0, import_pg_core.timestamp)("expire").notNull()
   }
 );
+var passwordResetTokens = (0, import_pg_core.pgTable)("password_reset_tokens", {
+  id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: (0, import_pg_core.varchar)("user_id").references(() => users.id).notNull(),
+  tokenHash: (0, import_pg_core.varchar)("token_hash").notNull(),
+  expiresAt: (0, import_pg_core.timestamp)("expires_at").notNull(),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow().notNull()
+});
 var users = (0, import_pg_core.pgTable)("users", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
   email: (0, import_pg_core.varchar)("email").unique(),
@@ -647,6 +655,20 @@ var DatabaseStorage = class {
     const [banner] = await db.update(banners).set(bannerData).where((0, import_drizzle_orm3.eq)(banners.id, id)).returning();
     return banner;
   }
+  async createPasswordResetToken(tokenData) {
+    const [token] = await db.insert(passwordResetTokens).values(tokenData).returning();
+    return token;
+  }
+  async getPasswordResetToken(tokenHash) {
+    const [token] = await db.select().from(passwordResetTokens).where((0, import_drizzle_orm3.eq)(passwordResetTokens.tokenHash, tokenHash));
+    return token;
+  }
+  async deletePasswordResetToken(id) {
+    await db.delete(passwordResetTokens).where((0, import_drizzle_orm3.eq)(passwordResetTokens.id, id));
+  }
+  async deletePasswordResetTokensByUserId(userId) {
+    await db.delete(passwordResetTokens).where((0, import_drizzle_orm3.eq)(passwordResetTokens.userId, userId));
+  }
 };
 var storage = new DatabaseStorage();
 
@@ -689,6 +711,53 @@ var isAuthenticated = async (req, res, next) => {
   }
   return res.status(401).json({ message: "Unauthorized" });
 };
+
+// server/email.ts
+var import_nodemailer = __toESM(require("nodemailer"), 1);
+var transporter = import_nodemailer.default.createTransport({
+  host: process.env.SMTP_HOST || "smtp.hostinger.com",
+  port: parseInt(process.env.SMTP_PORT || "465"),
+  secure: parseInt(process.env.SMTP_PORT || "465") === 465,
+  // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+async function sendPasswordResetEmail(email, token) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn("SMTP credentials not found in environment variables. Email sending skipped.");
+    console.log(`Mock email to ${email}: Token is ${token}`);
+    return false;
+  }
+  const resetLink = `https://whypals.com/reset-password?token=${token}`;
+  const mailOptions = {
+    from: `"WhyPals Support" <${process.env.SMTP_USER}>`,
+    to: email,
+    subject: "Whypals Password Reset",
+    text: `You requested a password reset. Please click the following link to reset your password: ${resetLink} . This link will expire in 15 minutes.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Password Reset Request</h2>
+        <p>You requested a password reset for your WhyPals account.</p>
+        <p>Please click the button below to reset your password:</p>
+        <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+        <p>Or copy and paste this link into your browser:</p>
+        <p><a href="${resetLink}">${resetLink}</a></p>
+        <p>This link will expire in 15 minutes.</p>
+        <p>If you didn't request this, you can safely ignore this email.</p>
+      </div>
+    `
+  };
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Message sent: %s", info.messageId);
+    return true;
+  } catch (error) {
+    console.error("Error sending email:", error);
+    return false;
+  }
+}
 
 // server/routes.ts
 var import_zod_validation_error = require("zod-validation-error");
@@ -917,6 +986,61 @@ async function registerRoutes(httpServer2, app2) {
     } catch (error) {
       console.error("Error updating verification status:", error);
       res.status(500).json({ message: "Failed to update verification status" });
+    }
+  });
+  app2.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.json({ message: "If an account with that email exists, we have sent a password reset link." });
+      }
+      const token = (0, import_crypto.randomBytes)(32).toString("hex");
+      const tokenHash = (0, import_crypto.createHash)("sha256").update(token).digest("hex");
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1e3);
+      await storage.deletePasswordResetTokensByUserId(user.id);
+      await storage.createPasswordResetToken({
+        userId: user.id,
+        tokenHash,
+        expiresAt
+      });
+      if (user.email) {
+        await sendPasswordResetEmail(user.email, token);
+      }
+      res.json({ message: "If an account with that email exists, we have sent a password reset link." });
+    } catch (error) {
+      console.error("Error in forgot password:", error);
+      res.status(500).json({ message: "Failed to process request" });
+    }
+  });
+  app2.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Token and new password are required" });
+      }
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long" });
+      }
+      const tokenHash = (0, import_crypto.createHash)("sha256").update(token).digest("hex");
+      const resetToken = await storage.getPasswordResetToken(tokenHash);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+      if (/* @__PURE__ */ new Date() > resetToken.expiresAt) {
+        await storage.deletePasswordResetToken(resetToken.id);
+        return res.status(400).json({ message: "Token has expired" });
+      }
+      const passwordHash = await import_bcrypt.default.hash(newPassword, BCRYPT_ROUNDS);
+      await storage.updateUserPassword(resetToken.userId, passwordHash);
+      await storage.deletePasswordResetToken(resetToken.id);
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Error in reset password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
     }
   });
   app2.post("/api/auth/register", async (req, res) => {
