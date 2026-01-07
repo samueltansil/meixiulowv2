@@ -256,17 +256,10 @@ export default function WhackAMoleGame({
           return (
             <div
               key={index}
-              className="relative rounded-full flex items-center justify-center overflow-hidden"
-              style={{ 
-                width: `${cellSize}px`, 
-                height: `${cellSize}px`,
-                backgroundColor: (config.holeOuterColor || '#9CA3AF') 
-              }}
+              className="relative bg-amber-800/40 rounded-full flex items-center justify-center overflow-hidden"
+              style={{ width: `${cellSize}px`, height: `${cellSize}px` }}
             >
-              <div 
-                className="w-3/4 h-1/2 rounded-full absolute bottom-2" 
-                style={{ backgroundColor: (config.holeInnerColor || '#7B4B32') }}
-              />
+              <div className="w-3/4 h-1/2 bg-amber-900/60 rounded-full absolute bottom-2" />
               
               <AnimatePresence>
                 {mole && (

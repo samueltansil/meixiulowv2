@@ -269,8 +269,6 @@ export interface WhackGameConfig {
   backgroundImage?: string;
   duration: number; // seconds
   winMessage?: string;
-  holeOuterColor?: string; // CSS color for hole outer circle
-  holeInnerColor?: string; // CSS color for hole inner oval
 }
 
 export interface TimelineGameConfig {
