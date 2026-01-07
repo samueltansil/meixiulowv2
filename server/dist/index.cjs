@@ -724,13 +724,13 @@ var transporter = import_nodemailer.default.createTransport({
     pass: process.env.SMTP_PASS
   }
 });
-async function sendPasswordResetEmail(email, token) {
+async function sendPasswordResetEmail(email, token, origin = "https://whypals.com") {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.warn("SMTP credentials not found in environment variables. Email sending skipped.");
     console.log(`Mock email to ${email}: Token is ${token}`);
     return false;
   }
-  const resetLink = `https://whypals.com/reset-password?token=${token}`;
+  const resetLink = `${origin}/reset-password?token=${token}`;
   const mailOptions = {
     from: `"WhyPals Support" <${process.env.SMTP_USER}>`,
     to: email,
@@ -1008,7 +1008,8 @@ async function registerRoutes(httpServer2, app2) {
         expiresAt
       });
       if (user.email) {
-        await sendPasswordResetEmail(user.email, token);
+        const origin = req.headers.origin || `${req.protocol}://${req.get("host")}`;
+        await sendPasswordResetEmail(user.email, token, origin);
       }
       res.json({ message: "If an account with that email exists, we have sent a password reset link." });
     } catch (error) {
@@ -2340,7 +2341,7 @@ app.use((req, res, next) => {
     throw err;
   });
   serveStatic(app);
-  const port = parseInt(process.env.PORT || "3000", 10);
+  const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
       port,
