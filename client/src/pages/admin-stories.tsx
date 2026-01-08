@@ -824,7 +824,7 @@ export default function AdminStories() {
     );
   }
 
-  const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com"];
+  const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com", "meixiu.low@gmail.com"];
   if (!user.email || !ALLOWED_ADMIN_EMAILS.includes(user.email)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">

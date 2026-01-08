@@ -933,7 +933,7 @@ async function registerRoutes(httpServer2, app2) {
         return res.status(401).json({ message: "Please log in to your account first" });
       }
       const user = await storage.getUser(req.session.userId);
-      const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com"];
+      const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com", "meixiu.low@gmail.com"];
       if (!user || !user.email || !ALLOWED_ADMIN_EMAILS.includes(user.email)) {
         return res.status(403).json({ message: "Access denied: Unauthorized account" });
       }
