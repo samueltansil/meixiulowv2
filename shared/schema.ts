@@ -120,6 +120,7 @@ export const stories = pgTable("stories", {
   category: jsonb("category").$type<string[]>().notNull(),
   thumbnail: text("thumbnail").notNull(),
   thumbnailCredit: text("thumbnail_credit"),
+  views: integer("views").default(0).notNull(),
   readTime: varchar("read_time").notNull(),
   isFeatured: boolean("is_featured").default(false).notNull(),
   isPublished: boolean("is_published").default(false).notNull(),
@@ -188,6 +189,7 @@ export const insertR2VideoMetadataSchema = createInsertSchema(r2VideoMetadata).o
 export const insertStorySchema = createInsertSchema(stories).omit({
   createdAt: true,
   updatedAt: true,
+  views: true,
 }).extend({
   category: z.array(z.string()),
 });
@@ -195,6 +197,7 @@ export const insertStorySchema = createInsertSchema(stories).omit({
 export const updateStorySchema = createInsertSchema(stories).omit({
   createdAt: true,
   updatedAt: true,
+  views: true,
 }).partial().extend({
   category: z.array(z.string()).optional(),
 });

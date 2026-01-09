@@ -733,17 +733,21 @@ export async function registerRoutes(
   app.get('/api/stories/:id', async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      let story;
+
       if (isNaN(id)) {
-        const story = await storage.getStoryBySlug(req.params.id);
-        if (!story) {
-          return res.status(404).json({ message: "Story not found" });
-        }
-        return res.json(story);
+        story = await storage.getStoryBySlug(req.params.id);
+      } else {
+        story = await storage.getStoryById(id);
       }
-      const story = await storage.getStoryById(id);
+
       if (!story) {
         return res.status(404).json({ message: "Story not found" });
       }
+
+      // Increment views
+      await storage.incrementStoryViews(story.id);
+
       res.json(story);
     } catch (error) {
       console.error("Error fetching story:", error);

@@ -177,6 +177,7 @@ var stories = (0, import_pg_core.pgTable)("stories", {
   category: (0, import_pg_core.jsonb)("category").$type().notNull(),
   thumbnail: (0, import_pg_core.text)("thumbnail").notNull(),
   thumbnailCredit: (0, import_pg_core.text)("thumbnail_credit"),
+  views: (0, import_pg_core.integer)("views").default(0).notNull(),
   readTime: (0, import_pg_core.varchar)("read_time").notNull(),
   isFeatured: (0, import_pg_core.boolean)("is_featured").default(false).notNull(),
   isPublished: (0, import_pg_core.boolean)("is_published").default(false).notNull(),
@@ -218,13 +219,15 @@ var insertR2VideoMetadataSchema = (0, import_drizzle_zod.createInsertSchema)(r2V
 });
 var insertStorySchema = (0, import_drizzle_zod.createInsertSchema)(stories).omit({
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
+  views: true
 }).extend({
   category: import_zod.z.array(import_zod.z.string())
 });
 var updateStorySchema = (0, import_drizzle_zod.createInsertSchema)(stories).omit({
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
+  views: true
 }).partial().extend({
   category: import_zod.z.array(import_zod.z.string()).optional()
 });
@@ -524,6 +527,9 @@ var DatabaseStorage = class {
   }
   async deleteStory(id) {
     await db.delete(stories).where((0, import_drizzle_orm3.eq)(stories.id, id));
+  }
+  async incrementStoryViews(id) {
+    await db.update(stories).set({ views: import_drizzle_orm3.sql`${stories.views} + 1` }).where((0, import_drizzle_orm3.eq)(stories.id, id));
   }
   // Story Games
   async getGamesByStoryTitle(storyTitle) {
@@ -1467,17 +1473,16 @@ async function registerRoutes(httpServer2, app2) {
   app2.get("/api/stories/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      let story;
       if (isNaN(id)) {
-        const story2 = await storage.getStoryBySlug(req.params.id);
-        if (!story2) {
-          return res.status(404).json({ message: "Story not found" });
-        }
-        return res.json(story2);
+        story = await storage.getStoryBySlug(req.params.id);
+      } else {
+        story = await storage.getStoryById(id);
       }
-      const story = await storage.getStoryById(id);
       if (!story) {
         return res.status(404).json({ message: "Story not found" });
       }
+      await storage.incrementStoryViews(story.id);
       res.json(story);
     } catch (error) {
       console.error("Error fetching story:", error);

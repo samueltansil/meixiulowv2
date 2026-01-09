@@ -72,6 +72,7 @@ export interface IStorage {
   createStory(story: InsertStory): Promise<Story>;
   updateStory(id: number, story: Partial<InsertStory>): Promise<Story>;
   deleteStory(id: number): Promise<void>;
+  incrementStoryViews(id: number): Promise<void>;
   
   // Story Games
   getGamesByStoryTitle(storyTitle: string): Promise<StoryGame[]>;
@@ -378,6 +379,13 @@ export class DatabaseStorage implements IStorage {
 
   async deleteStory(id: number): Promise<void> {
     await db.delete(stories).where(eq(stories.id, id));
+  }
+
+  async incrementStoryViews(id: number): Promise<void> {
+    await db
+      .update(stories)
+      .set({ views: sql`${stories.views} + 1` })
+      .where(eq(stories.id, id));
   }
 
   // Story Games

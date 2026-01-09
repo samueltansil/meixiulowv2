@@ -772,6 +772,9 @@ function StoryRow({ story, onEdit, onDelete }: { story: Story; onEdit: () => voi
           </span>
         )}
       </td>
+      <td className="py-4 px-4">
+        <span className="text-sm font-medium">{story.views || 0}</span>
+      </td>
       <td className="py-4 px-4 text-right">
         <div className="flex items-center justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onEdit} data-testid={`button-edit-story-${story.id}`}>
@@ -1013,6 +1016,7 @@ export default function AdminStories() {
                   <th className="text-left py-3 px-4 font-heading text-sm">Category</th>
                   <th className="text-left py-3 px-4 font-heading text-sm">Featured</th>
                   <th className="text-left py-3 px-4 font-heading text-sm">Status</th>
+                  <th className="text-left py-3 px-4 font-heading text-sm">Views</th>
                   <th className="text-right py-3 px-4 font-heading text-sm">Actions</th>
                 </tr>
               </thead>
