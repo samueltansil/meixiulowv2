@@ -84,6 +84,29 @@ export default function Home() {
     }
   }, [allFeaturedItems.length, currentSlide]);
 
+  useEffect(() => {
+    const metaDescription = document.querySelector('meta[name="description"]');
+    const existingContent = metaDescription?.getAttribute('content');
+    
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'An educational platform that helps children understand what’s happening in the world through age-appropriate news they can read, listen to, and play with through interactive games.');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'description';
+      meta.content = 'An educational platform that helps children understand what’s happening in the world through age-appropriate news they can read, listen to, and play with through interactive games.';
+      document.head.appendChild(meta);
+    }
+
+    return () => {
+      if (metaDescription && existingContent) {
+        metaDescription.setAttribute('content', existingContent);
+      } else if (!metaDescription) {
+        const meta = document.querySelector('meta[name="description"]');
+        if (meta) document.head.removeChild(meta);
+      }
+    };
+  }, []);
+
   const currentFeaturedItem = allFeaturedItems[currentSlide];
 
   return (

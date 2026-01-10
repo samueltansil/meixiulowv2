@@ -39,7 +39,6 @@ export default function Settings() {
   
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showNotificationsDialog, setShowNotificationsDialog] = useState(false);
-  const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
   
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
@@ -355,7 +354,7 @@ export default function Settings() {
 
             <motion.div
               whileHover={{ x: 5 }}
-              onClick={() => setShowPrivacyDialog(true)}
+              onClick={() => navigate('/about')}
               className="bg-white rounded-2xl p-6 shadow-sm border border-border flex items-center gap-4 cursor-pointer hover:border-primary/30 transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
@@ -599,83 +598,7 @@ export default function Settings() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showPrivacyDialog} onOpenChange={setShowPrivacyDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-heading text-xl">Privacy Policy & Safety Guidelines</DialogTitle>
-            <DialogDescription>Last updated: December 2024</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 py-4 text-sm">
-            <section>
-              <h3 className="font-heading font-bold text-lg mb-2">1. Introduction</h3>
-              <p className="text-muted-foreground">
-                Welcome to WhyPals! We are committed to protecting the privacy and safety of children who use our platform. 
-                This Privacy Policy explains how we collect, use, and protect personal information in compliance with the 
-                Children's Online Privacy Protection Act (COPPA) and other applicable regulations.
-              </p>
-            </section>
 
-            <section>
-              <h3 className="font-heading font-bold text-lg mb-2">2. Information We Collect</h3>
-              <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                <li>Account information (name, email address)</li>
-                <li>Activity data (reading time, games played, points earned)</li>
-                <li>Content preferences and interests</li>
-                <li>Technical information (device type, browser) for platform improvement</li>
-              </ul>
-            </section>
-
-            <section>
-              <h3 className="font-heading font-bold text-lg mb-2">3. How We Use Information</h3>
-              <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                <li>To provide and personalize educational content</li>
-                <li>To track learning progress and award points</li>
-                <li>To communicate important updates (with consent)</li>
-                <li>To improve our platform and services</li>
-              </ul>
-            </section>
-
-            <section>
-              <h3 className="font-heading font-bold text-lg mb-2">4. Child Safety Measures</h3>
-              <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                <li>All content is reviewed for age-appropriateness</li>
-                <li>No direct messaging between users</li>
-                <li>No personal information is displayed publicly</li>
-                <li>Parental/guardian consent required for marketing emails</li>
-                <li>Teachers are verified before selling content</li>
-              </ul>
-            </section>
-
-            <section>
-              <h3 className="font-heading font-bold text-lg mb-2">5. Data Protection</h3>
-              <p className="text-muted-foreground">
-                We use industry-standard security measures including encryption, secure servers, and regular security audits. 
-                Personal data is never sold to third parties. We retain data only as long as necessary to provide our services.
-              </p>
-            </section>
-
-            <section>
-              <h3 className="font-heading font-bold text-lg mb-2">6. Your Rights</h3>
-              <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                <li>Access your personal data at any time</li>
-                <li>Request correction of inaccurate information</li>
-                <li>Delete your account and associated data</li>
-                <li>Opt out of marketing communications</li>
-                <li>Contact us with privacy concerns</li>
-              </ul>
-            </section>
-
-            <section>
-              <h3 className="font-heading font-bold text-lg mb-2">7. Contact Us</h3>
-              <p className="text-muted-foreground">
-                If you have any questions about this Privacy Policy or our safety practices, please contact us at:
-                <br />
-                <strong>Email:</strong> privacy@newspals.com
-              </p>
-            </section>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={showTeacherConfirm} onOpenChange={setShowTeacherConfirm}>
         <AlertDialogContent>
