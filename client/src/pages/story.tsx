@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import type { Story, StoryGame, Video } from "@shared/schema";
 import { format } from "date-fns";
+import { Helmet } from "react-helmet-async";
 
 const IMAGE_TAG_REGEX = /\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]/g;
 const FULL_IMAGE_TAG_REGEX = /^\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]$/;
@@ -302,6 +303,14 @@ export default function StoryPage() {
 
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
+      <Helmet>
+        <title>{article.title} - WhyPals</title>
+        <meta name="description" content={article.excerpt || article.content.substring(0, 160)} />
+        <meta property="og:title" content={article.title} />
+        <meta property="og:description" content={article.excerpt || article.content.substring(0, 160)} />
+        <meta property="og:image" content={article.thumbnail} />
+        <meta property="og:type" content="article" />
+      </Helmet>
       <nav className="p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 font-heading text-2xl font-bold text-primary hover:opacity-80 transition-opacity">

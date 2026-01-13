@@ -78,7 +78,7 @@ export default function SelectRole() {
         className="w-full max-w-2xl"
       >
         <div className="text-center mb-8">
-          <img src={logo} alt="WhyPals" className="h-24 w-24 mx-auto mb-4" />
+          <img src={logo} alt="WhyPals" className="h-24 w-24 mx-auto mb-4" width="96" height="96" />
           <h1 className="font-heading text-3xl font-bold text-primary">One More Step!</h1>
           <p className="text-muted-foreground mt-2 text-lg">
             Are you joining as a teacher or a student?

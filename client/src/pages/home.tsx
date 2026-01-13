@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Story, Banner } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import ProfileButton from "@/components/ProfileButton";
+import { Helmet } from "react-helmet-async";
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string>("All");
@@ -84,38 +85,22 @@ export default function Home() {
     }
   }, [allFeaturedItems.length, currentSlide]);
 
-  useEffect(() => {
-    const metaDescription = document.querySelector('meta[name="description"]');
-    const existingContent = metaDescription?.getAttribute('content');
-    
-    if (metaDescription) {
-      metaDescription.setAttribute('content', 'An educational platform that helps children understand what’s happening in the world through age-appropriate news they can read, listen to, and play with through interactive games.');
-    } else {
-      const meta = document.createElement('meta');
-      meta.name = 'description';
-      meta.content = 'An educational platform that helps children understand what’s happening in the world through age-appropriate news they can read, listen to, and play with through interactive games.';
-      document.head.appendChild(meta);
-    }
-
-    return () => {
-      if (metaDescription && existingContent) {
-        metaDescription.setAttribute('content', existingContent);
-      } else if (!metaDescription) {
-        const meta = document.querySelector('meta[name="description"]');
-        if (meta) document.head.removeChild(meta);
-      }
-    };
-  }, []);
-
   const currentFeaturedItem = allFeaturedItems[currentSlide];
 
   return (
     <div className="min-h-screen bg-background font-sans selection:bg-accent selection:text-accent-foreground flex flex-col">
+      <Helmet>
+        <title>WhyPals - News for Kids</title>
+        <meta name="description" content="An educational platform that helps children understand what’s happening in the world through age-appropriate news they can read, listen to, and play with through interactive games." />
+        <meta property="og:title" content="WhyPals - News for Kids" />
+        <meta property="og:description" content="An educational platform that helps children understand what’s happening in the world through age-appropriate news they can read, listen to, and play with through interactive games." />
+        <meta property="og:type" content="website" />
+      </Helmet>
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/50">
         <div className="container mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="WhyPals Logo" className="h-12 w-12 object-contain" />
+            <img src={logo} alt="WhyPals Logo" className="h-12 w-12 object-contain" width="48" height="48" />
             <span className="font-heading text-2xl font-bold text-primary tracking-tight">WhyPals</span>
           </div>
 
@@ -155,7 +140,7 @@ export default function Home() {
               <SheetContent side="right" className="w-80">
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-3 font-heading">
-                    <img src={logo} alt="WhyPals" className="h-10 w-10" />
+                    <img src={logo} alt="WhyPals" className="h-10 w-10" width="40" height="40" />
                     WhyPals
                   </SheetTitle>
                 </SheetHeader>

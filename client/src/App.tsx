@@ -1,6 +1,5 @@
 import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { Helmet } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -47,7 +46,18 @@ function LoadingScreen() {
 function Router() {
   const { isAuthenticated, isLoading, needsRoleSelection } = useAuth();
 
+  // If loading but we have valid initial data (from SSR), we shouldn't show the loading screen
+  // unless we are truly waiting for critical data that prevents rendering.
+  // In our case, SSR provides data or null.
   if (isLoading) {
+    // If we have SSR data, isLoading should technically be false if configured correctly,
+    // but if it is true, we want to avoid replacing the SSR content with a spinner.
+    // However, if we are on the client and truly loading (e.g. navigation), we might need it.
+    // For the initial load, we want to suppress this if possible.
+    // A simple heuristic: if we are in the first render cycle and have SSR content (document.getElementById('root')?.hasChildNodes()), 
+    // we might want to delay showing the loader. 
+    // But a cleaner React way is to trust that useAuth won't be loading if we hydrated correctly.
+    // If we ARE seeing the loading screen, it means useAuth IS loading.
     return (
       <Switch>
         <Route path="/register" component={Register} />
@@ -55,6 +65,7 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/select-role" component={SelectRole} />
+        {/* Avoid full screen loader flash on hydration if possible, but keep for navigation */}
         <Route component={LoadingScreen} />
       </Switch>
     );
@@ -126,12 +137,13 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <TooltipProvider>
+      <Helmet>
+        <title>WhyPals - News for Kids</title>
+      </Helmet>
+      <Toaster />
+      <Router />
+    </TooltipProvider>
   );
 }
 

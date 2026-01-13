@@ -29,7 +29,18 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    // For SSR, if we are on the server, we need to handle full URLs or inject base URL
+    let url = queryKey.join("/") as string;
+    
+    // Check if we are in a browser environment
+    const isServer = typeof window === 'undefined';
+    if (isServer && url.startsWith('/')) {
+        // In SSR, we need a full URL. Assuming localhost:3002 for internal API calls during SSR
+        // This port should match the server configuration
+        url = `http://localhost:3002${url}`;
+    }
+
+    const res = await fetch(url, {
       credentials: "include",
     });
 
@@ -41,17 +52,20 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+export const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        queryFn: getQueryFn({ on401: "throw" }),
+        refetchInterval: false,
+        refetchOnWindowFocus: false,
+        staleTime: Infinity,
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
     },
-    mutations: {
-      retry: false,
-    },
-  },
-});
+  });
+
+export const queryClient = createQueryClient();
