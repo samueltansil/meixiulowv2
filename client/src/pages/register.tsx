@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@assets/whypals-logo.png";
-import { Mail, Lock, User, Eye, EyeOff, Loader2, Shield } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, Loader2, Shield, ArrowLeft } from "lucide-react";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -81,7 +81,15 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 left-4">
+        <Link href="/">
+          <Button variant="ghost" className="gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </Button>
+        </Link>
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
