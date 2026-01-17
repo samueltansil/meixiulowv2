@@ -28,9 +28,12 @@ import {
   passwordResetTokens,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  parentVerificationRequests,
+  type InsertParentVerificationRequest,
+  type ParentVerificationRequest,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, isNull } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -116,6 +119,12 @@ export interface IStorage {
   getPasswordResetToken(tokenHash: string): Promise<PasswordResetToken | undefined>;
   deletePasswordResetToken(id: number): Promise<void>;
   deletePasswordResetTokensByUserId(userId: string): Promise<void>;
+
+  // Parent/Guardian Email Verification
+  createParentVerificationRequest(data: InsertParentVerificationRequest): Promise<ParentVerificationRequest>;
+  getParentVerificationRequestByTokenHash(tokenHash: string): Promise<ParentVerificationRequest | undefined>;
+  getParentVerificationRequestByCodeHash(codeHash: string): Promise<ParentVerificationRequest | undefined>;
+  markParentVerificationAsUsed(id: number, verifiedAt: Date): Promise<ParentVerificationRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -168,11 +177,7 @@ export class DatabaseStorage implements IStorage {
     const existingUser = await this.getUser(userId);
     
     if (!existingUser) {
-      const [newUser] = await db
-        .insert(users)
-        .values({ id: userId, points })
-        .returning();
-      return newUser;
+      throw new Error("User not found");
     }
     
     const [user] = await db
@@ -634,6 +639,36 @@ export class DatabaseStorage implements IStorage {
 
   async deletePasswordResetTokensByUserId(userId: string): Promise<void> {
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+  }
+
+  async createParentVerificationRequest(data: InsertParentVerificationRequest): Promise<ParentVerificationRequest> {
+    const [request] = await db.insert(parentVerificationRequests).values(data).returning();
+    return request;
+  }
+
+  async getParentVerificationRequestByTokenHash(tokenHash: string): Promise<ParentVerificationRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(parentVerificationRequests)
+      .where(and(eq(parentVerificationRequests.tokenHash, tokenHash), isNull(parentVerificationRequests.verifiedAt)));
+    return request;
+  }
+
+  async getParentVerificationRequestByCodeHash(codeHash: string): Promise<ParentVerificationRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(parentVerificationRequests)
+      .where(and(eq(parentVerificationRequests.codeHash, codeHash), isNull(parentVerificationRequests.verifiedAt)));
+    return request;
+  }
+
+  async markParentVerificationAsUsed(id: number, verifiedAt: Date): Promise<ParentVerificationRequest> {
+    const [request] = await db
+      .update(parentVerificationRequests)
+      .set({ verifiedAt })
+      .where(eq(parentVerificationRequests.id, id))
+      .returning();
+    return request;
   }
 }
 

@@ -16,22 +16,24 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
-  // Get token from URL query params
-  const token = new URLSearchParams(window.location.search).get("token");
-
   useEffect(() => {
-    if (!token) {
+    const searchToken = new URLSearchParams(window.location.search).get("token");
+
+    if (!searchToken) {
       toast({
         variant: "destructive",
         title: "Invalid link",
         description: "Password reset token is missing.",
       });
       navigate("/login");
+      return;
     }
-  }, [token, navigate, toast]);
+    setToken(searchToken);
+  }, [navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

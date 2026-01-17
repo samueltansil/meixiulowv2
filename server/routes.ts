@@ -4,7 +4,7 @@ import { randomBytes, createHash } from "crypto";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
-import { sendPasswordResetEmail } from "./email";
+import { sendPasswordResetEmail, sendParentVerificationEmail } from "./email";
 import { 
   insertVideoSchema, 
   updateVideoSchema, 
@@ -27,6 +27,7 @@ import { listVideos, getVideoSignedUrl, getImageUploadUrl, getImageSignedUrl, up
 import multer from "multer";
 
 const BCRYPT_ROUNDS = 12;
+const PRIVACY_POLICY_VERSION = "2026-01-04";
 
 const MURF_API_KEY = process.env.MURF_API_KEY;
 const MURF_VOICE_ID = process.env.MURF_VOICE_ID || "en-US-natalie";
@@ -247,10 +248,10 @@ export async function registerRoutes(
 
   app.post('/api/auth/register', async (req: any, res) => {
     try {
-      const { email, password, confirmPassword, firstName, lastName, agreedToTerms } = req.body;
+      const { email, parentEmail, password, confirmPassword, firstName, lastName, agreedToTerms } = req.body;
       
-      if (!email || !password || !confirmPassword) {
-        return res.status(400).json({ message: "Email, password, and password confirmation are required" });
+      if (!email || !parentEmail || !password || !confirmPassword) {
+        return res.status(400).json({ message: "Email, parent or guardian email, password, and password confirmation are required" });
       }
       
       if (password !== confirmPassword) {
@@ -265,6 +266,10 @@ export async function registerRoutes(
       if (!emailRegex.test(email)) {
         return res.status(400).json({ message: "Please enter a valid email address" });
       }
+
+      if (!emailRegex.test(parentEmail)) {
+        return res.status(400).json({ message: "Please enter a valid parent or guardian email address" });
+      }
       
       if (!agreedToTerms) {
         return res.status(400).json({ message: "You must agree to the Terms of Service and Privacy Policy" });
@@ -276,34 +281,107 @@ export async function registerRoutes(
       }
       
       const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-      
-      const user = await storage.upsertUser({
+
+      const token = randomBytes(32).toString('hex');
+      const code = (Math.floor(100000 + Math.random() * 900000)).toString();
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const codeHash = createHash('sha256').update(code).digest('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const registrationData = {
         email: email.toLowerCase(),
         passwordHash,
         firstName: firstName || null,
         lastName: lastName || null,
-        userRole: null,
         agreedToTerms: true,
         agreedToTermsAt: new Date(),
+      };
+
+      await storage.createParentVerificationRequest({
+        parentEmail: parentEmail.toLowerCase(),
+        tokenHash,
+        codeHash,
+        expiresAt,
+        privacyVersion: PRIVACY_POLICY_VERSION,
+        registrationData,
       });
-      
-      req.session.userId = user.id;
-      req.session.authType = 'email';
-      
-      req.session.save((err: any) => {
-        if (err) {
-          console.error("Error saving session:", err);
-          return res.status(500).json({ message: "Registration failed" });
-        }
-        res.status(201).json({ 
-          success: true, 
-          user: { ...user, passwordHash: undefined },
-          needsRoleSelection: !user.userRole
-        });
+
+      const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+      await sendParentVerificationEmail(parentEmail, code, token, origin);
+
+      res.status(201).json({
+        success: true,
+        message: "Parent or guardian verification email sent.",
       });
     } catch (error) {
-      console.error("Error registering user:", error);
+      console.error("Error starting registration:", error);
       res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  app.post('/api/auth/verify-parent', async (req: any, res) => {
+    try {
+      const { token, code } = req.body as { token?: string; code?: string };
+
+      if (!token && !code) {
+        return res.status(400).json({ message: "Verification token or code is required" });
+      }
+
+      const now = new Date();
+
+      let request = null;
+      if (token) {
+        const tokenHash = createHash('sha256').update(token).digest('hex');
+        request = await storage.getParentVerificationRequestByTokenHash(tokenHash);
+      } else if (code) {
+        const codeHash = createHash('sha256').update(code).digest('hex');
+        request = await storage.getParentVerificationRequestByCodeHash(codeHash);
+      }
+
+      if (!request) {
+        return res.status(400).json({ message: "Invalid or expired verification" });
+      }
+
+      if (now > request.expiresAt) {
+        return res.status(400).json({ message: "Verification has expired" });
+      }
+
+      const data = request.registrationData as {
+        email: string;
+        passwordHash: string;
+        firstName: string | null;
+        lastName: string | null;
+        agreedToTerms: boolean;
+        agreedToTermsAt: string | Date | null;
+      };
+
+      const existingUser = await storage.getUserByEmail(data.email);
+      let user = existingUser;
+
+      if (!user) {
+        const agreedAt = data.agreedToTermsAt ? new Date(data.agreedToTermsAt) : new Date();
+
+        user = await storage.upsertUser({
+          email: data.email.toLowerCase(),
+          passwordHash: data.passwordHash,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          userRole: null,
+          agreedToTerms: true,
+          agreedToTermsAt: agreedAt,
+          emailVerified: true,
+        });
+      }
+
+      await storage.markParentVerificationAsUsed(request.id, now);
+
+      res.json({
+        success: true,
+        message: "Parent or guardian email verified. You can now log in.",
+      });
+    } catch (error) {
+      console.error("Error verifying parent email:", error);
+      res.status(500).json({ message: "Verification failed" });
     }
   });
 
@@ -319,7 +397,11 @@ export async function registerRoutes(
       if (!user || !user.passwordHash) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
-      
+
+      if (!user.emailVerified) {
+        return res.status(401).json({ message: "Your account has not been approved by email yet. Please ask your parent or guardian to check their email." });
+      }
+
       const validPassword = await bcrypt.compare(password, user.passwordHash);
       if (!validPassword) {
         return res.status(401).json({ message: "Invalid email or password" });

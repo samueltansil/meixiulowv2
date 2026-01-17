@@ -21,16 +21,17 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [acknowledgedParent, setAcknowledgedParent] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
-  const { register, isRegistering, isAuthenticated, needsRoleSelection } = useAuth();
+  const { register, isRegistering, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(needsRoleSelection ? "/select-role" : "/");
+      navigate("/");
     }
-  }, [isAuthenticated, needsRoleSelection, navigate]);
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,14 +63,23 @@ export default function Register() {
       return;
     }
 
+    if (!acknowledgedParent) {
+      toast({
+        variant: "destructive",
+        title: "Parent or guardian acknowledgement required",
+        description: "Please confirm that this account is being created by a parent or legal guardian.",
+      });
+      return;
+    }
+
     try {
-      const result = await register({ email, password, confirmPassword, firstName, lastName, agreedToTerms });
+      const result = await register({ email, parentEmail: email, password, confirmPassword, firstName, lastName, agreedToTerms });
       if (result.success) {
         toast({
-          title: "Account created!",
-          description: "Welcome to WhyPals! Now let's set up your account.",
+          title: "Check your email",
+          description: "We’ve emailed your parent or guardian to verify your account.",
         });
-        navigate("/select-role");
+        navigate("/verify-parent");
       }
     } catch (error: any) {
       toast({
@@ -107,7 +117,9 @@ export default function Register() {
         <Card className="shadow-xl border-2 border-primary/10">
           <CardHeader>
             <CardTitle className="font-heading text-xl">Create Account</CardTitle>
-            <CardDescription>Fill in your details to get started</CardDescription>
+            <CardDescription>
+              A parent or legal guardian must create the account. Children should not enter their own email address.
+            </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
@@ -139,13 +151,13 @@ export default function Register() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Parent or Guardian Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
-                    placeholder="your@email.com"
+                    placeholder="parent@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
@@ -203,30 +215,46 @@ export default function Register() {
                 )}
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
-                <Checkbox
-                  id="terms"
-                  checked={agreedToTerms}
-                  onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
-                  className="mt-0.5"
-                />
-                <div className="text-sm">
-                  <Label htmlFor="terms" className="cursor-pointer">
-                    i agree to the{" "}
-                    <Link href="/about?from=register" className="text-primary font-semibold hover:underline">
-                      terms & conditions
-                    </Link>
-                    .
-                  </Label>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-xl">
+                  <Checkbox
+                    id="terms"
+                    checked={agreedToTerms}
+                    onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <div className="text-sm">
+                    <Label htmlFor="terms" className="cursor-pointer">
+                      i agree to the{" "}
+                      <Link href="/about?from=register" className="text-primary font-semibold hover:underline">
+                        terms & conditions
+                      </Link>
+                      .
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 bg-muted/20 rounded-xl">
+                  <Checkbox
+                    id="parentAcknowledgement"
+                    checked={acknowledgedParent}
+                    onCheckedChange={(checked) => setAcknowledgedParent(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <div className="text-sm">
+                    <Label htmlFor="parentAcknowledgement" className="cursor-pointer">
+                      I acknowledge that this account must be created by a parent or legal guardian.
+                    </Label>
+                  </div>
                 </div>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button 
-                type="submit" 
-                className="w-full gap-2" 
+              <Button
+                type="submit"
+                className="w-full gap-2"
                 size="lg"
-                disabled={isRegistering || !email || !password || !confirmPassword || password !== confirmPassword || !agreedToTerms}
+                disabled={isRegistering || !email || !password || !confirmPassword || password !== confirmPassword || !agreedToTerms || !acknowledgedParent}
               >
                 {isRegistering ? (
                   <>

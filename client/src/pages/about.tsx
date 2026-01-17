@@ -1,12 +1,17 @@
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import logo from "@assets/whypals-logo.png";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function About() {
-  const search = typeof window !== "undefined" ? window.location.search : "";
-  const params = new URLSearchParams(search);
-  const fromRegister = params.get("from") === "register";
+  const [fromRegister, setFromRegister] = useState(false);
+
+  useEffect(() => {
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    setFromRegister(params.get("from") === "register");
+  }, []);
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
       <nav className="p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">

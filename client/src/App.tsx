@@ -23,6 +23,7 @@ import CourseworkDetail from "@/pages/coursework-detail";
 import TeacherProfile from "@/pages/teacher-profile";
 import Leaderboard from "@/pages/leaderboard";
 import VerifyTeacher from "@/pages/verify-teacher";
+import VerifyParent from "@/pages/verify-parent";
 import Register from "@/pages/register";
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
@@ -44,7 +45,7 @@ function LoadingScreen() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading, needsRoleSelection } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   // If loading but we have valid initial data (from SSR), we shouldn't show the loading screen
   // unless we are truly waiting for critical data that prevents rendering.
@@ -64,7 +65,7 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
-        <Route path="/select-role" component={SelectRole} />
+        <Route path="/verify-parent" component={VerifyParent} />
         {/* Avoid full screen loader flash on hydration if possible, but keep for navigation */}
         <Route component={LoadingScreen} />
       </Switch>
@@ -78,6 +79,7 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/verify-parent" component={VerifyParent} />
         <Route path="/" component={Home} />
         <Route path="/videos" component={Videos} />
         <Route path="/games" component={Games} />
@@ -95,20 +97,12 @@ function Router() {
     );
   }
 
-  if (needsRoleSelection) {
-    return (
-      <Switch>
-        <Route path="/select-role" component={SelectRole} />
-        <Route component={SelectRole} />
-      </Switch>
-    );
-  }
-
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/register" component={Register} />
       <Route path="/login" component={Login} />
+      <Route path="/verify-parent" component={VerifyParent} />
       <Route path="/about" component={About} />
       <Route path="/contact" component={Contact} />
       <Route path="/games" component={Games} />

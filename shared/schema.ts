@@ -30,6 +30,21 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const parentVerificationRequests = pgTable("parent_verification_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  parentEmail: varchar("parent_email").notNull(),
+  tokenHash: varchar("token_hash").notNull(),
+  codeHash: varchar("code_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  privacyVersion: varchar("privacy_version", { length: 50 }),
+  registrationData: jsonb("registration_data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_parent_verification_token").on(table.tokenHash),
+  index("idx_parent_verification_code").on(table.codeHash),
+]);
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -388,3 +403,5 @@ export const SUBJECTS = [
 
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertParentVerificationRequest = typeof parentVerificationRequests.$inferInsert;
+export type ParentVerificationRequest = typeof parentVerificationRequests.$inferSelect;

@@ -14,16 +14,22 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoggingIn, isAuthenticated, needsRoleSelection } = useAuth();
+  const [redirectParam, setRedirectParam] = useState<string | null>(null);
+  const { login, isLoggingIn, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const redirectParam = new URLSearchParams(window.location.search).get("redirect") || null;
+
+  useEffect(() => {
+    const search = window.location.search;
+    const param = new URLSearchParams(search).get("redirect");
+    setRedirectParam(param);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(needsRoleSelection ? "/select-role" : (redirectParam || "/"));
+      navigate(redirectParam || "/");
     }
-  }, [isAuthenticated, needsRoleSelection, navigate, redirectParam]);
+  }, [isAuthenticated, navigate, redirectParam]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,17 +41,13 @@ export default function Login() {
           title: "Welcome back!",
           description: "You've successfully logged in.",
         });
-        if (result.needsRoleSelection) {
-          navigate("/select-role");
-        } else {
-          navigate(redirectParam || "/");
-        }
+        navigate(redirectParam || "/");
       }
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: error.message || "Invalid email or password.",
+        description: error.message || "Invalid email or password, or your account has not been approved by email yet.",
       });
     }
   };
@@ -95,11 +97,6 @@ export default function Login() {
                     required
                   />
                 </div>
-                <div className="flex justify-end">
-                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
               </div>
 
               <div className="space-y-2">
@@ -122,6 +119,11 @@ export default function Login() {
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
+                </div>
+                <div className="flex justify-end">
+                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                    Forgot password?
+                  </Link>
                 </div>
               </div>
             </CardContent>
