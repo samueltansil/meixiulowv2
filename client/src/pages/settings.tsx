@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Search, LogOut, User, Bell, Shield, CreditCard, Menu, X, Home, Play, Gamepad2, GraduationCap, Settings as SettingsIcon, BookOpen, Users, AlertTriangle, Lock, Eye, EyeOff, ChevronRight, Check, Loader2 } from "lucide-react";
+import { Search, LogOut, User, Bell, Shield, CreditCard, Menu, X, Home, Play, Gamepad2, Settings as SettingsIcon, Lock, Eye, EyeOff, ChevronRight, Check, Loader2 } from "lucide-react";
 import logo from "@assets/whypals-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,16 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import ProfileButton from "@/components/ProfileButton";
 
 export default function Settings() {
@@ -34,8 +24,6 @@ export default function Settings() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [showTeacherConfirm, setShowTeacherConfirm] = useState(false);
-  const [showTeacherRestricted, setShowTeacherRestricted] = useState(false);
   
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showNotificationsDialog, setShowNotificationsDialog] = useState(false);
@@ -51,30 +39,6 @@ export default function Settings() {
   const [marketingOptIn, setMarketingOptIn] = useState((user as any)?.marketingEmailsOptIn ?? false);
   const [contentAlertsOptIn, setContentAlertsOptIn] = useState((user as any)?.contentAlertsOptIn ?? true);
   const [teacherUpdatesOptIn, setTeacherUpdatesOptIn] = useState((user as any)?.teacherUpdatesOptIn ?? true);
-
-  const currentUser = user;
-
-  const roleMutation = useMutation({
-    mutationFn: async (role: string) => {
-      return apiRequest('POST', '/api/user/role', { role });
-    },
-    onSuccess: (_, role) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"], exact: true });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"], exact: true });
-      if (role === 'teacher') {
-        toast({ 
-          title: "Account Changed to Teacher!", 
-          description: "You can now upload free content. Complete verification to sell paid content." 
-        });
-        navigate('/teacher-dashboard');
-      } else {
-        toast({ title: "Success", description: "Your account type has been updated!" });
-      }
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update account type", variant: "destructive" });
-    },
-  });
 
   const profileMutation = useMutation({
     mutationFn: async (data: { firstName?: string; lastName?: string }) => {
@@ -120,24 +84,6 @@ export default function Settings() {
       toast({ title: "Error", description: "Failed to update notification preferences", variant: "destructive" });
     },
   });
-
-  const handleTeacherClick = () => {
-    if (currentUser?.userRole === 'student') {
-      const allowedEmails = ['admin@whypals.com', 'samueljuliustansil@gmail.com'];
-      const isAllowed = currentUser?.email && allowedEmails.includes(currentUser.email);
-      
-      if (!isAllowed) {
-        setShowTeacherRestricted(true);
-      } else {
-        setShowTeacherConfirm(true);
-      }
-    }
-  };
-
-  const confirmTeacherChange = () => {
-    setShowTeacherConfirm(false);
-    roleMutation.mutate('teacher');
-  };
 
   const handleProfileSave = () => {
     profileMutation.mutate({ firstName, lastName });
@@ -368,67 +314,6 @@ export default function Settings() {
             </motion.div>
           </div>
 
-          <div className="mt-8 bg-gradient-to-br from-purple-50 to-blue-50 rounded-3xl p-8 border border-purple-100">
-            <h2 className="font-heading text-2xl font-bold mb-4">Account Type</h2>
-            <p className="text-muted-foreground mb-6">
-              Choose your account type to access different features. Teachers can upload and sell coursework in the marketplace.
-            </p>
-            
-            <div className="grid md:grid-cols-2 gap-4">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => roleMutation.mutate('student')}
-                disabled={roleMutation.isPending || currentUser?.userRole === 'student'}
-                className={`p-6 rounded-2xl border-2 transition-all text-left ${
-                  currentUser?.userRole === 'student' 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-gray-200 bg-white hover:border-primary/50'
-                }`}
-              >
-                <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-blue-600" />
-                </div>
-                <h3 className="font-heading text-lg font-bold mb-2">Student</h3>
-                <p className="text-sm text-muted-foreground">Browse and purchase educational content from teachers.</p>
-                {currentUser?.userRole === 'student' && (
-                  <span className="inline-block mt-3 text-xs font-bold text-primary">Current selection</span>
-                )}
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={currentUser?.userRole === 'student' ? handleTeacherClick : undefined}
-                disabled={roleMutation.isPending || currentUser?.userRole === 'teacher'}
-                className={`p-6 rounded-2xl border-2 transition-all text-left ${
-                  currentUser?.userRole === 'teacher' 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-gray-200 bg-white hover:border-primary/50'
-                }`}
-              >
-                <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center mb-4">
-                  <BookOpen className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="font-heading text-lg font-bold mb-2">Teacher</h3>
-                <p className="text-sm text-muted-foreground">Upload and sell coursework, earn 80-90% of each sale.</p>
-                {currentUser?.userRole === 'teacher' && (
-                  <span className="inline-block mt-3 text-xs font-bold text-primary">Current selection</span>
-                )}
-              </motion.button>
-            </div>
-
-            {currentUser?.userRole === 'teacher' && (
-              <div className="mt-6">
-                <Link href="/teacher-dashboard">
-                  <Button className="rounded-full font-bold gap-2">
-                    <GraduationCap className="w-4 h-4" /> Go to Teacher Dashboard
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-
           <div className="mt-8">
             <Button 
               variant="outline" 
@@ -595,52 +480,9 @@ export default function Settings() {
               {notificationsMutation.isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...</> : "Save Preferences"}
             </Button>
           </div>
-        </DialogContent>
+      </DialogContent>
       </Dialog>
 
-
-
-      <AlertDialog open={showTeacherConfirm} onOpenChange={setShowTeacherConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 font-heading">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              Change to Teacher Account?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                Are you sure you want to change your account to a <strong>Teacher</strong> account?
-              </p>
-              <p>
-                As a teacher, you'll be able to upload free educational content immediately. However, to <strong>sell paid content</strong>, you'll need to complete a verification process.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                The verification process typically takes 1-3 business days.
-              </p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmTeacherChange} className="bg-green-600 hover:bg-green-700">
-              Yes, Become a Teacher
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={showTeacherRestricted} onOpenChange={setShowTeacherRestricted}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Teacher Role Under Development</AlertDialogTitle>
-            <AlertDialogDescription>
-              The Teacher role is currently under development. Please check back later for updates.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowTeacherRestricted(false)}>Got it</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

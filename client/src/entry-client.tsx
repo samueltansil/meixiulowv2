@@ -1,9 +1,13 @@
 import { hydrateRoot } from "react-dom/client";
 import { HydrationBoundary, QueryClientProvider } from "@tanstack/react-query";
-import { HelmetProvider } from "react-helmet-async";
+import * as ReactHelmetAsync from "react-helmet-async";
 import { queryClient } from "./lib/queryClient";
 import App from "./App";
 import "./index.css";
+
+const helmetModule: any = ReactHelmetAsync;
+const HelmetProvider =
+  helmetModule.HelmetProvider || helmetModule.default?.HelmetProvider;
 
 // @ts-ignore
 const dehydratedState = window.__REACT_QUERY_STATE__;

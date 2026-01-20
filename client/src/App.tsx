@@ -1,5 +1,5 @@
 import { Switch, Route } from "wouter";
-import { Helmet } from "react-helmet-async";
+import * as ReactHelmetAsync from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -15,23 +15,21 @@ import GamePreview from "@/pages/game-preview";
 import AdminStories from "@/pages/admin-stories";
 import AdminVideos from "@/pages/admin-videos";
 import AdminGames from "@/pages/admin-games";
-import AdminTeachers from "@/pages/admin-teachers";
 import AdminBanners from "@/pages/admin-banners";
-import TeacherDashboard from "@/pages/teacher-dashboard";
 import Marketplace from "@/pages/marketplace";
 import CourseworkDetail from "@/pages/coursework-detail";
 import TeacherProfile from "@/pages/teacher-profile";
 import Leaderboard from "@/pages/leaderboard";
-import VerifyTeacher from "@/pages/verify-teacher";
 import VerifyParent from "@/pages/verify-parent";
 import Register from "@/pages/register";
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
-import SelectRole from "@/pages/select-role";
 import About from "@/pages/about";
 import Contact from "@/pages/contact";
 import { useAuth } from "@/hooks/useAuth";
+
+const { Helmet } = ReactHelmetAsync;
 
 function LoadingScreen() {
   return (
@@ -90,7 +88,6 @@ function Router() {
         <Route path="/admin/stories" component={AdminStories} />
         <Route path="/admin/videos" component={AdminVideos} />
         <Route path="/admin/games" component={AdminGames} />
-        <Route path="/admin/teachers" component={AdminTeachers} />
         <Route path="/admin/banners" component={AdminBanners} />
         <Route component={Home} />
       </Switch>
@@ -112,17 +109,14 @@ function Router() {
       <Route path="/r2-video/:key" component={R2VideoPlayer} />
       <Route path="/story/:id" component={Story} />
       <Route path="/teachers" component={Teachers} />
-      <Route path="/teacher-dashboard" component={TeacherDashboard} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/marketplace/:id" component={CourseworkDetail} />
       <Route path="/teacher/:id" component={TeacherProfile} />
       <Route path="/leaderboard" component={Leaderboard} />
-      <Route path="/verify-teacher" component={VerifyTeacher} />
       <Route path="/settings" component={Settings} />
       <Route path="/admin/stories" component={AdminStories} />
       <Route path="/admin/videos" component={AdminVideos} />
       <Route path="/admin/games" component={AdminGames} />
-      <Route path="/admin/teachers" component={AdminTeachers} />
       <Route path="/admin/banners" component={AdminBanners} />
       <Route component={NotFound} />
     </Switch>

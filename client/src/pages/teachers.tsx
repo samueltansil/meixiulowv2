@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { ShoppingBag, Users, Trophy, DollarSign, BookOpen, Search, Menu, X, Home, Play, Gamepad2, GraduationCap, Settings, TrendingUp, Star, ArrowRight, FileText, Video, HelpCircle, Package } from "lucide-react";
+import { ShoppingBag, Users, Trophy, DollarSign, BookOpen, Search, Menu, X, Home, Play, Gamepad2, Settings, TrendingUp, Star, ArrowRight, FileText, Video, HelpCircle, Package } from "lucide-react";
 import logo from "@assets/whypals-logo.png";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -14,11 +14,6 @@ export default function Teachers() {
   const { user } = useAuth();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const { data: currentUser } = useQuery<User>({
-    queryKey: ["/api/auth/user"],
-    enabled: !!user,
-  });
 
   const { data: topProducts = [] } = useQuery<CourseworkItem[]>({
     queryKey: ["/api/marketplace/leaderboard/products"],
@@ -37,8 +32,6 @@ export default function Teachers() {
     { href: "/videos", label: "Videos", icon: Play },
     { href: "/games", label: "Games", icon: Gamepad2 },
   ];
-
-  const isTeacher = currentUser?.userRole === 'teacher';
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -75,13 +68,6 @@ export default function Teachers() {
           </div>
 
           <div className="flex items-center gap-4">
-            {isTeacher && (
-              <Link href="/teacher-dashboard">
-                <Button variant="outline" size="sm" className="hidden md:flex gap-2 font-semibold">
-                  <BookOpen className="w-4 h-4" /> Teacher Dashboard
-                </Button>
-              </Link>
-            )}
             <div className="hidden md:block">
               <ProfileButton />
             </div>
@@ -154,46 +140,44 @@ export default function Teachers() {
           </div>
         </section>
 
-        {isTeacher && (
-          <section className="py-12 bg-white">
-            <div className="container mx-auto px-4">
-              <div className="grid md:grid-cols-3 gap-6">
-                <motion.div 
-                  className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-3xl p-6 text-center"
-                  whileHover={{ y: -5 }}
-                >
-                  <div className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                    <DollarSign className="w-7 h-7 text-white" />
-                  </div>
-                  <h3 className="font-heading text-lg md:text-xl font-bold mb-2">Earn 80-90%</h3>
-                  <p className="text-sm text-muted-foreground">Keep the majority of every sale. Low platform fees mean more money in your pocket.</p>
-                </motion.div>
-                
-                <motion.div 
-                  className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-3xl p-6 text-center"
-                  whileHover={{ y: -5 }}
-                >
-                  <div className="w-14 h-14 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                    <Users className="w-7 h-7 text-white" />
-                  </div>
-                  <h3 className="font-heading text-lg md:text-xl font-bold mb-2">Reach Millions</h3>
-                  <p className="text-sm text-muted-foreground">Connect with teachers and students worldwide looking for quality educational content.</p>
-                </motion.div>
-                
-                <motion.div 
-                  className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-3xl p-6 text-center"
-                  whileHover={{ y: -5 }}
-                >
-                  <div className="w-14 h-14 bg-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                    <Trophy className="w-7 h-7 text-white" />
-                  </div>
-                  <h3 className="font-heading text-lg md:text-xl font-bold mb-2">Build Reputation</h3>
-                  <p className="text-sm text-muted-foreground">Earn badges, climb leaderboards, and become a top-rated teacher creator.</p>
-                </motion.div>
-              </div>
+        <section className="py-12 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="grid md:grid-cols-3 gap-6">
+              <motion.div 
+                className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-3xl p-6 text-center"
+                whileHover={{ y: -5 }}
+              >
+                <div className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <DollarSign className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="font-heading text-lg md:text-xl font-bold mb-2">Earn 80-90%</h3>
+                <p className="text-sm text-muted-foreground">Keep the majority of every sale. Low platform fees mean more money in your pocket.</p>
+              </motion.div>
+              
+              <motion.div 
+                className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-3xl p-6 text-center"
+                whileHover={{ y: -5 }}
+              >
+                <div className="w-14 h-14 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <Users className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="font-heading text-lg md:text-xl font-bold mb-2">Reach Millions</h3>
+                <p className="text-sm text-muted-foreground">Connect with teachers and students worldwide looking for quality educational content.</p>
+              </motion.div>
+              
+              <motion.div 
+                className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-3xl p-6 text-center"
+                whileHover={{ y: -5 }}
+              >
+                <div className="w-14 h-14 bg-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <Trophy className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="font-heading text-lg md:text-xl font-bold mb-2">Build Reputation</h3>
+                <p className="text-sm text-muted-foreground">Earn badges, climb leaderboards, and become a top-rated teacher creator.</p>
+              </motion.div>
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
         <section className="py-16 bg-muted/30">
           <div className="container mx-auto px-4">

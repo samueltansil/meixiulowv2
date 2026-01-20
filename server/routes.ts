@@ -131,40 +131,19 @@ export async function registerRoutes(
     return res.status(401).json({ valid: false, message: "Session expired or invalid" });
   });
 
-  // Admin: Get pending teacher verification requests
+  // Admin: Teacher verification endpoints disabled
   app.get('/api/admin/teacher-verifications', async (req: any, res) => {
     if (!isValidAdminSession(req)) {
       return res.status(401).json({ message: "Admin authentication required" });
     }
-    try {
-      const pendingTeachers = await storage.getPendingVerificationRequests();
-      res.json(pendingTeachers.map(t => ({ ...t, passwordHash: undefined })));
-    } catch (error) {
-      console.error("Error fetching pending verifications:", error);
-      res.status(500).json({ message: "Failed to fetch pending verifications" });
-    }
+    return res.status(200).json([]);
   });
 
-  // Admin: Approve or reject teacher verification
   app.post('/api/admin/teacher-verifications/:userId', async (req: any, res) => {
     if (!isValidAdminSession(req)) {
       return res.status(401).json({ message: "Admin authentication required" });
     }
-    try {
-      const { userId } = req.params;
-      const { action } = req.body;
-      
-      if (!action || !['approve', 'reject'].includes(action)) {
-        return res.status(400).json({ message: "Action must be 'approve' or 'reject'" });
-      }
-      
-      const status = action === 'approve' ? 'verified' : 'rejected';
-      const user = await storage.updateTeacherVerificationStatus(userId, status);
-      res.json({ success: true, user: { ...user, passwordHash: undefined } });
-    } catch (error) {
-      console.error("Error updating verification status:", error);
-      res.status(500).json({ message: "Failed to update verification status" });
-    }
+    return res.status(400).json({ message: "Teacher verification is disabled" });
   });
 
   // Email/Password Auth Endpoints
@@ -459,67 +438,11 @@ export async function registerRoutes(
   });
 
   app.patch('/api/auth/role', async (req: any, res) => {
-    try {
-      const userId = getUserIdFromRequest(req);
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const { role } = req.body;
-      if (!role || !['teacher', 'student'].includes(role)) {
-        return res.status(400).json({ message: "Role must be 'teacher' or 'student'" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      if (user.userRole) {
-        return res.status(400).json({ message: "Role has already been set" });
-      }
-      
-      const updatedUser = await storage.updateUserRole(userId, role);
-      res.json({ 
-        success: true, 
-        user: { ...updatedUser, passwordHash: undefined }
-      });
-    } catch (error) {
-      console.error("Error setting role:", error);
-      res.status(500).json({ message: "Failed to set role" });
-    }
+    return res.status(400).json({ message: "Account roles are no longer supported" });
   });
 
   app.post('/api/auth/request-verification', async (req: any, res) => {
-    try {
-      const userId = getUserIdFromRequest(req);
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      if (user.userRole !== 'teacher') {
-        return res.status(400).json({ message: "Only teachers can request verification" });
-      }
-      
-      if (user.teacherVerificationStatus === 'verified') {
-        return res.status(400).json({ message: "You are already verified" });
-      }
-      
-      const updatedUser = await storage.requestTeacherVerification(userId);
-      res.json({ 
-        success: true, 
-        user: { ...updatedUser, passwordHash: undefined },
-        message: "Verification request submitted. Our team will review your profile."
-      });
-    } catch (error) {
-      console.error("Error requesting verification:", error);
-      res.status(500).json({ message: "Failed to request verification" });
-    }
+    return res.status(400).json({ message: "Teacher verification is disabled" });
   });
 
   app.get('/api/auth/me', async (req: any, res) => {
@@ -1575,37 +1498,7 @@ export async function registerRoutes(
 
   // User role change (supports both auth methods)
   app.post('/api/user/role', async (req: any, res) => {
-    try {
-      // Support session-based authentication
-      const userId = getUserIdFromRequest(req);
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const { role } = req.body;
-      if (!role || !['teacher', 'student'].includes(role)) {
-        return res.status(400).json({ message: "Role must be 'teacher' or 'student'" });
-      }
-      
-      const currentUser = await storage.getUser(userId);
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // If changing to teacher, reset verification status
-      if (role === 'teacher' && currentUser.userRole !== 'teacher') {
-        await storage.updateUserRole(userId, role);
-        await storage.updateTeacherVerificationStatus(userId, 'unverified');
-        const updatedUser = await storage.getUser(userId);
-        res.json({ ...updatedUser, passwordHash: undefined });
-      } else {
-        const user = await storage.updateUserRole(userId, role);
-        res.json({ ...user, passwordHash: undefined });
-      }
-    } catch (error) {
-      console.error("Error setting user role:", error);
-      res.status(500).json({ message: "Failed to set role" });
-    }
+    return res.status(400).json({ message: "Account roles are no longer supported" });
   });
 
   // User profile update (supports both auth methods)

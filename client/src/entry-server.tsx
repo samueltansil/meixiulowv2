@@ -1,6 +1,6 @@
 import { renderToString } from "react-dom/server";
 import { dehydrate, HydrationBoundary, QueryClientProvider } from "@tanstack/react-query";
-import { HelmetProvider } from "react-helmet-async";
+import * as ReactHelmetAsync from "react-helmet-async";
 import { createQueryClient } from "./lib/queryClient";
 import { Router } from "wouter";
 import App from "./App";
@@ -35,6 +35,9 @@ export async function render(url: string) {
     // Simple static location hook for SSR
     const hook = () => [url, () => {}] as [string, (to: string) => void];
     const helmetContext: any = {};
+    const helmetModule: any = ReactHelmetAsync;
+    const HelmetProvider =
+      helmetModule.HelmetProvider || helmetModule.default?.HelmetProvider;
     
     console.log(`[SSR] Rendering url: ${url}`);
 
