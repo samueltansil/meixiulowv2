@@ -35,9 +35,7 @@ export async function render(url: string) {
     // Simple static location hook for SSR
     const hook = () => [url, () => {}] as [string, (to: string) => void];
     const helmetContext: any = {};
-    const helmetModule: any = ReactHelmetAsync;
-    const HelmetProvider =
-      helmetModule.HelmetProvider || helmetModule.default?.HelmetProvider;
+    const { HelmetProvider } = ReactHelmetAsync;
     
     console.log(`[SSR] Rendering url: ${url}`);
 
