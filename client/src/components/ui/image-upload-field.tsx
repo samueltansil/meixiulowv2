@@ -50,6 +50,7 @@ export function ImageUploadField({
       const uploadRes = await fetch(uploadEndpoint, {
         method: 'POST',
         body: formData,
+        credentials: "include",
       });
 
       if (!uploadRes.ok) {

@@ -20,7 +20,7 @@ const CATEGORIES = ["Science", "Nature", "Sports", "World", "Fun", "Music", "Art
 
 async function validateSession(): Promise<boolean> {
   try {
-    const res = await fetch("/api/admin/session");
+    const res = await fetch("/api/admin/session", { credentials: "include" });
     if (res.ok) {
       return true;
     }
@@ -44,6 +44,7 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
+        credentials: "include",
       });
 
       if (res.ok) {
@@ -379,7 +380,7 @@ export default function AdminVideos() {
   const { data: videos = [], isLoading, error } = useQuery<Video[]>({
     queryKey: ["/api/admin/videos"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/videos");
+      const res = await fetch("/api/admin/videos", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch videos");
       return res.json();
     },
@@ -392,6 +393,7 @@ export default function AdminVideos() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const error = await res.json();
@@ -417,6 +419,7 @@ export default function AdminVideos() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const error = await res.json();
@@ -440,6 +443,7 @@ export default function AdminVideos() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/admin/videos/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete video");
       return res.json();

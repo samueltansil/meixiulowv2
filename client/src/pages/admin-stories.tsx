@@ -81,7 +81,8 @@ function AudioGenerator({ content }: { content: string }) {
           headers: { 
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ text }),
+          credentials: "include"
         });
         
         if (!res.ok) {
@@ -158,7 +159,7 @@ function AudioGenerator({ content }: { content: string }) {
 
 async function validateSession(): Promise<boolean> {
   try {
-    const res = await fetch("/api/admin/session");
+    const res = await fetch("/api/admin/session", { credentials: "include" });
     if (res.ok) {
       return true;
     }
@@ -189,6 +190,7 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
+        credentials: "include",
       });
 
       if (res.ok) {
@@ -319,6 +321,7 @@ function StoryForm({
       const uploadRes = await fetch('/api/admin/upload/image', {
         method: 'POST',
         body: formData,
+        credentials: "include"
       });
 
       if (!uploadRes.ok) {
@@ -362,6 +365,7 @@ function StoryForm({
       const uploadRes = await fetch('/api/admin/upload/story-content-image', {
         method: 'POST',
         body: formData,
+        credentials: "include"
       });
 
       if (!uploadRes.ok) {
@@ -832,7 +836,7 @@ export default function AdminStories() {
   const { data: stories = [], isLoading, error } = useQuery<Story[]>({
     queryKey: ["/api/admin/stories"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/stories");
+      const res = await fetch("/api/admin/stories", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch stories");
       return res.json();
     },
@@ -845,6 +849,7 @@ export default function AdminStories() {
         method: "POST",
         headers,
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const error = await res.json();
@@ -870,6 +875,7 @@ export default function AdminStories() {
         method: "PUT",
         headers,
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const error = await res.json();
@@ -893,6 +899,7 @@ export default function AdminStories() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/admin/stories/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete story");
       return res.json();

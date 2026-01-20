@@ -29,7 +29,7 @@ export default function AdminTeachers() {
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/session').then(res => {
+    fetch('/api/admin/session', { credentials: "include" }).then(res => {
       if (res.ok) {
         setIsLoggedIn(true);
       }
@@ -71,6 +71,7 @@ export default function AdminTeachers() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ action }),
+        credentials: "include",
       });
       if (!res.ok) throw new Error('Failed to update');
       return res.json();

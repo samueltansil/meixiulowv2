@@ -15,7 +15,7 @@ import type { Banner } from "@shared/schema";
 
 async function validateSession(): Promise<boolean> {
   try {
-    const res = await fetch("/api/admin/session");
+    const res = await fetch("/api/admin/session", { credentials: "include" });
     if (res.ok) {
       return true;
     }
@@ -39,6 +39,7 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
+        credentials: "include",
       });
 
       if (res.ok) {
@@ -152,7 +153,7 @@ function BannerForm({
           id="order"
           type="number"
           value={order} 
-          onChange={(e) => setOrder(e.target.value)}
+          onChange={(e) => setOrder(Number(e.target.value))}
           placeholder="0"
           required
         />
@@ -208,6 +209,7 @@ export default function AdminBanners() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to create banner");
       return res.json();
@@ -228,6 +230,7 @@ export default function AdminBanners() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to update banner");
       return res.json();
@@ -246,6 +249,7 @@ export default function AdminBanners() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/banners/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete banner");
     },
@@ -264,6 +268,7 @@ export default function AdminBanners() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active }),
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to update banner status");
       return res.json();

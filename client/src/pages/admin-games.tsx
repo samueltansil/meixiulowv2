@@ -29,7 +29,7 @@ const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
 
 async function validateSession(): Promise<boolean> {
   try {
-    const sessionRes = await fetch("/api/admin/session");
+    const sessionRes = await fetch("/api/admin/session", { credentials: "include" });
     if (sessionRes.ok) {
       return true;
     }
@@ -53,7 +53,7 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
-        credentials: "same-origin",
+        credentials: "include",
       });
 
       if (res.ok) {
@@ -152,6 +152,7 @@ function ImageUploadField({
       const uploadRes = await fetch('/api/admin/upload/game-image', {
         method: 'POST',
         body: formData,
+        credentials: "include",
       });
 
       if (!uploadRes.ok) {
@@ -286,6 +287,7 @@ function MultiImageUploadField({
       const uploadRes = await fetch('/api/admin/upload/game-image', {
         method: 'POST',
         body: formData,
+        credentials: "include",
       });
 
       if (!uploadRes.ok) {
@@ -1144,7 +1146,7 @@ export default function AdminGames() {
   const { data: games = [], isLoading, error } = useQuery<StoryGame[]>({
     queryKey: ["/api/admin/games"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/games");
+      const res = await fetch("/api/admin/games", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch games");
       return res.json();
     },
@@ -1157,6 +1159,7 @@ export default function AdminGames() {
         method: "POST",
         headers,
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         let message = "";
@@ -1225,6 +1228,7 @@ export default function AdminGames() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/admin/games/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete game");
       return res.json();
