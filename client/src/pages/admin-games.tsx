@@ -25,7 +25,6 @@ const GAME_TYPES = [
   { value: "timeline", label: "Timeline", icon: "📅" },
 ];
 
-const ADMIN_TOKEN_KEY = 'newspals_admin_token';
 const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
 
 async function validateSession(): Promise<boolean> {
@@ -1226,7 +1225,6 @@ export default function AdminGames() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/admin/games/${id}`, {
         method: "DELETE",
-        headers: token ? { "x-admin-token": token } : {},
       });
       if (!res.ok) throw new Error("Failed to delete game");
       return res.json();

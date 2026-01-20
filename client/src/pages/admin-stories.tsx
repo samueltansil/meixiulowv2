@@ -825,20 +825,14 @@ export default function AdminStories() {
     checkSession();
   }, []);
 
-  const token = getStoredToken();
-  const headers: Record<string, string> = {
+  const headers = {
     "Content-Type": "application/json",
   };
-  if (token) {
-    headers["x-admin-token"] = token;
-  }
 
   const { data: stories = [], isLoading, error } = useQuery<Story[]>({
     queryKey: ["/api/admin/stories"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/stories", {
-        headers: token ? { "x-admin-token": token } : {},
-      });
+      const res = await fetch("/api/admin/stories");
       if (!res.ok) throw new Error("Failed to fetch stories");
       return res.json();
     },

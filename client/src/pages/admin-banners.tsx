@@ -1,48 +1,26 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertBannerSchema, type Banner, type InsertBanner } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, Save, Image as ImageIcon, Lock } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
-const ADMIN_TOKEN_KEY = 'newspals_admin_token';
-
-function getStoredToken(): string | null {
-  return sessionStorage.getItem(ADMIN_TOKEN_KEY);
-}
-
-function setStoredToken(token: string): void {
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-}
-
-function clearStoredToken(): void {
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-}
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Plus, Trash2, Save, X, Lock, GripVertical, Power, PowerOff } from "lucide-react";
+import { ImageUploadField } from "@/components/ui/image-upload-field";
+import { Link } from "wouter";
+import { motion } from "framer-motion";
+import type { Banner } from "@shared/schema";
 
 async function validateSession(): Promise<boolean> {
-  const token = getStoredToken();
-  if (!token) return false;
-  
   try {
-    const res = await fetch("/api/admin/session", {
-      headers: { "x-admin-token": token },
-    });
-    if (!res.ok) {
-      clearStoredToken();
-      return false;
+    const res = await fetch("/api/admin/session");
+    if (res.ok) {
+      return true;
     }
-    return true;
-  } catch {
-    return false;
-  }
+  } catch {}
+  return false;
 }
 
 function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -64,8 +42,6 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setStoredToken(data.token);
         toast({ title: "Admin access granted!" });
         onSuccess();
       } else {
@@ -122,296 +98,317 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-export default function AdminBanners() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+function BannerForm({ 
+  banner, 
+  onSave, 
+  onCancel, 
+  isLoading 
+}: { 
+  banner?: Banner; 
+  onSave: (data: any) => void; 
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [title, setTitle] = useState(banner?.title || "");
+  const [imageUrl, setImageUrl] = useState(banner?.imageUrl || "");
+  const [active, setActive] = useState(banner?.active ?? true);
+  const [order, setOrder] = useState(banner?.order || 0);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    const isValid = await validateSession();
-    setIsAuthenticated(isValid);
-    setIsCheckingAuth(false);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      title,
+      imageUrl,
+      active,
+      order: Number(order),
+    });
   };
 
-  const { data: banners = [], isLoading } = useQuery<Banner[]>({
-    queryKey: ["/api/banners"],
-    queryFn: async () => {
-      const token = getStoredToken();
-      const res = await fetch("/api/banners", {
-        headers: {
-          "x-admin-token": token || "",
-        },
-      });
-      if (res.status === 401 || res.status === 403) {
-        setIsAuthenticated(false);
-        throw new Error("Session expired");
-      }
-      if (!res.ok) throw new Error("Failed to fetch banners");
-      return res.json();
-    },
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="title">Title</Label>
+        <Input 
+          id="title"
+          value={title} 
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter banner title"
+          required
+        />
+      </div>
+
+      <ImageUploadField 
+        label="Banner Image"
+        value={imageUrl}
+        onChange={setImageUrl}
+        placeholder="https://..."
+        uploadEndpoint="/api/admin/upload/banner"
+        previewClassName="w-full h-32"
+      />
+
+      <div className="space-y-2">
+        <Label htmlFor="order">Order (lower numbers appear first)</Label>
+        <Input 
+          id="order"
+          type="number"
+          value={order} 
+          onChange={(e) => setOrder(e.target.value)}
+          placeholder="0"
+          required
+        />
+      </div>
+
+      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+        <div className="space-y-0.5">
+          <Label htmlFor="active" className="font-medium">Active Status</Label>
+          <p className="text-xs text-muted-foreground">Show this banner on the home page</p>
+        </div>
+        <Switch
+          id="active"
+          checked={active}
+          onCheckedChange={setActive}
+        />
+      </div>
+
+      <div className="flex justify-end gap-4 pt-6 border-t">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          <X className="w-4 h-4 mr-2" /> Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          <Save className="w-4 h-4 mr-2" /> {isLoading ? "Saving..." : "Save Banner"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export default function AdminBanners() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
+
+  useEffect(() => {
+    validateSession().then((valid) => {
+      setIsAuthenticated(valid);
+      setIsCheckingSession(false);
+    });
+  }, []);
+
+  const { data: banners, isLoading } = useQuery<Banner[]>({
+    queryKey: ['/api/banners'],
     enabled: isAuthenticated,
   });
 
-  const form = useForm<InsertBanner>({
-    resolver: zodResolver(insertBannerSchema),
-    defaultValues: {
-      title: "",
-      imageUrl: "",
-      active: true,
-      order: 0,
-    },
-  });
-
   const createMutation = useMutation({
-    mutationFn: async (data: InsertBanner) => {
-      const token = getStoredToken();
+    mutationFn: async (data: any) => {
       const res = await fetch("/api/banners", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "x-admin-token": token || "",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (res.status === 401 || res.status === 403) {
-        setIsAuthenticated(false);
-        throw new Error("Session expired");
-      }
       if (!res.ok) throw new Error("Failed to create banner");
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/banners"] });
-      setIsOpen(false);
-      form.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/banners'] });
+      setIsCreating(false);
       toast({ title: "Success", description: "Banner created successfully" });
     },
-    onError: (error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create banner", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const res = await fetch(`/api/banners/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update banner");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/banners'] });
+      setEditingBanner(null);
+      toast({ title: "Success", description: "Banner updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update banner", variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const token = getStoredToken();
       const res = await fetch(`/api/banners/${id}`, {
         method: "DELETE",
-        headers: {
-          "x-admin-token": token || "",
-        },
       });
-      if (res.status === 401 || res.status === 403) {
-        setIsAuthenticated(false);
-        throw new Error("Session expired");
-      }
       if (!res.ok) throw new Error("Failed to delete banner");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/banners"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/banners'] });
       toast({ title: "Success", description: "Banner deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete banner", variant: "destructive" });
     },
   });
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
-      const token = getStoredToken();
       const res = await fetch(`/api/banners/${id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-token": token || "",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active }),
       });
-      if (res.status === 401 || res.status === 403) {
-        setIsAuthenticated(false);
-        throw new Error("Session expired");
-      }
-      if (!res.ok) throw new Error("Failed to update banner");
+      if (!res.ok) throw new Error("Failed to update banner status");
+      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/banners"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/banners'] });
+      toast({ title: "Success", description: "Banner status updated" });
     },
   });
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("image", file);
-
-    setIsUploading(true);
-    try {
-      const token = getStoredToken();
-      const res = await fetch("/api/admin/upload/banner", {
-        method: "POST",
-        headers: {
-          "x-admin-token": token || "",
-        },
-        body: formData,
-      });
-      
-      if (res.status === 401 || res.status === 403) {
-        setIsAuthenticated(false);
-        throw new Error("Session expired");
-      }
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Upload failed");
-      }
-      
-      const data = await res.json();
-      form.setValue("imageUrl", data.imageUrl);
-      toast({ title: "Success", description: "Image uploaded successfully" });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to upload image", variant: "destructive" });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const onSubmit = (data: InsertBanner) => {
-    createMutation.mutate(data);
-  };
-
-  if (isCheckingAuth) {
+  if (isCheckingSession) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return <AdminLoginDialog onSuccess={() => {
-      setIsAuthenticated(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/banners"] });
-    }} />;
+    return <AdminLoginDialog onSuccess={() => setIsAuthenticated(true)} />;
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold font-heading">Banner Management</h1>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button>
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Banner Management</h1>
+            <p className="text-muted-foreground mt-2">Manage homepage promotional banners</p>
+          </div>
+          <div className="flex gap-4">
+             <Link href="/admin/games">
+              <Button variant="outline">Games</Button>
+            </Link>
+             <Link href="/admin/stories">
+              <Button variant="outline">Stories</Button>
+            </Link>
+            <Button onClick={() => setIsCreating(true)}>
               <Plus className="w-4 h-4 mr-2" /> Add Banner
             </Button>
-          </DialogTrigger>
-          <DialogContent>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center p-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            {banners?.sort((a, b) => a.order - b.order).map((banner) => (
+              <Card key={banner.id} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex items-center gap-6 p-6">
+                    <div className="flex-shrink-0 relative group">
+                      <img 
+                        src={banner.imageUrl} 
+                        alt={banner.title}
+                        className="w-48 h-24 object-cover rounded-lg border"
+                      />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold truncate">{banner.title}</h3>
+                        {banner.active ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                            <Power className="w-3 h-3 mr-1" /> Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                            <PowerOff className="w-3 h-3 mr-1" /> Inactive
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Order: {banner.order}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleActiveMutation.mutate({ id: banner.id, active: !banner.active })}
+                      >
+                        {banner.active ? "Deactivate" : "Activate"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingBanner(banner)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this banner?")) {
+                            deleteMutation.mutate(banner.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {banners?.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
+                <p>No banners found. Create one to get started.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Dialog open={isCreating} onOpenChange={setIsCreating}>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add New Banner</DialogTitle>
             </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Weekly Theme: Space" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="imageUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Image</FormLabel>
-                      <div className="space-y-2">
-                        <FormControl>
-                          <Input {...field} placeholder="/api/images/..." readOnly />
-                        </FormControl>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            disabled={isUploading}
-                          />
-                          {isUploading && <Loader2 className="w-4 h-4 animate-spin" />}
-                        </div>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="active"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Active Status</FormLabel>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" className="w-full" disabled={createMutation.isPending || isUploading}>
-                  {createMutation.isPending ? "Creating..." : "Create Banner"}
-                </Button>
-              </form>
-            </Form>
+            <BannerForm
+              onSave={(data) => createMutation.mutate(data)}
+              onCancel={() => setIsCreating(false)}
+              isLoading={createMutation.isPending}
+            />
           </DialogContent>
         </Dialog>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading ? (
-          <div className="col-span-full flex justify-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-        ) : banners.map((banner) => (
-          <div key={banner.id} className="border rounded-lg p-4 space-y-4 bg-card">
-            <div className="aspect-[3/1] relative rounded-md overflow-hidden bg-muted">
-              <img src={banner.imageUrl} alt={banner.title} className="object-cover w-full h-full" />
-            </div>
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold">{banner.title}</h3>
-              <Switch
-                checked={banner.active}
-                onCheckedChange={(checked) => toggleActiveMutation.mutate({ id: banner.id, active: checked })}
+        <Dialog open={!!editingBanner} onOpenChange={(open) => !open && setEditingBanner(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Banner</DialogTitle>
+            </DialogHeader>
+            {editingBanner && (
+              <BannerForm
+                banner={editingBanner}
+                onSave={(data) => updateMutation.mutate({ id: editingBanner.id, data })}
+                onCancel={() => setEditingBanner(null)}
+                isLoading={updateMutation.isPending}
               />
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  if (confirm("Are you sure you want to delete this banner?")) {
-                    deleteMutation.mutate(banner.id);
-                  }
-                }}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

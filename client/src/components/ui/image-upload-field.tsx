@@ -11,7 +11,6 @@ interface ImageUploadFieldProps {
   placeholder?: string;
   showPreview?: boolean;
   uploadEndpoint?: string;
-  token?: string | null;
   testid?: string;
   previewClassName?: string;
 }
@@ -23,7 +22,6 @@ export function ImageUploadField({
   placeholder = "https://...",
   showPreview = true,
   uploadEndpoint = "/api/admin/upload/game-image",
-  token,
   testid,
   previewClassName = "w-32 h-32"
 }: ImageUploadFieldProps) {
@@ -49,14 +47,8 @@ export function ImageUploadField({
       const formData = new FormData();
       formData.append('image', file);
       
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['x-admin-token'] = token;
-      }
-
       const uploadRes = await fetch(uploadEndpoint, {
         method: 'POST',
-        headers,
         body: formData,
       });
 

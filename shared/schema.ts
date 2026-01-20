@@ -293,6 +293,8 @@ export interface WhackGameConfig {
   distractorImages: string[];
   distractorLabels: string[];
   backgroundImage?: string;
+  holeOuterColor?: string;
+  holeInnerColor?: string;
   duration: number; // seconds
   winMessage?: string;
 }

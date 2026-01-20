@@ -17,36 +17,15 @@ import logo from "@assets/whypals-logo.png";
 import type { Video } from "@shared/schema";
 
 const CATEGORIES = ["Science", "Nature", "Sports", "World", "Fun", "Music", "Art"];
-const ADMIN_TOKEN_KEY = 'newspals_admin_token';
-
-function getStoredToken(): string | null {
-  return sessionStorage.getItem(ADMIN_TOKEN_KEY);
-}
-
-function setStoredToken(token: string): void {
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-}
-
-function clearStoredToken(): void {
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-}
 
 async function validateSession(): Promise<boolean> {
-  const token = getStoredToken();
-  if (!token) return false;
-  
   try {
-    const res = await fetch("/api/admin/session", {
-      headers: { "x-admin-token": token },
-    });
-    if (!res.ok) {
-      clearStoredToken();
-      return false;
+    const res = await fetch("/api/admin/session");
+    if (res.ok) {
+      return true;
     }
-    return true;
-  } catch {
-    return false;
-  }
+  } catch {}
+  return false;
 }
 
 function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -68,8 +47,6 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setStoredToken(data.token);
         toast({ title: "Admin access granted!" });
         onSuccess();
       } else {
@@ -230,7 +207,6 @@ function VideoForm({
         value={thumbnail}
         onChange={setThumbnail}
         placeholder="https://..."
-        token={getStoredToken()}
         uploadEndpoint="/api/admin/upload/video-thumbnail"
         testid="input-video-thumbnail"
         previewClassName="w-32 h-20"
@@ -400,20 +376,10 @@ export default function AdminVideos() {
     checkSession();
   }, []);
 
-  const token = getStoredToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers["x-admin-token"] = token;
-  }
-
   const { data: videos = [], isLoading, error } = useQuery<Video[]>({
     queryKey: ["/api/admin/videos"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/videos", {
-        headers: token ? { "x-admin-token": token } : {},
-      });
+      const res = await fetch("/api/admin/videos");
       if (!res.ok) throw new Error("Failed to fetch videos");
       return res.json();
     },
@@ -424,7 +390,7 @@ export default function AdminVideos() {
     mutationFn: async (data: any) => {
       const res = await fetch("/api/admin/videos", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -449,7 +415,7 @@ export default function AdminVideos() {
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
       const res = await fetch(`/api/admin/videos/${id}`, {
         method: "PUT",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -474,7 +440,6 @@ export default function AdminVideos() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/admin/videos/${id}`, {
         method: "DELETE",
-        headers: token ? { "x-admin-token": token } : {},
       });
       if (!res.ok) throw new Error("Failed to delete video");
       return res.json();
