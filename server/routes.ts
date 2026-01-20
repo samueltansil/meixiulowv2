@@ -115,6 +115,15 @@ export async function registerRoutes(
       if (password === ADMIN_PASSWORD) {
         const token = generateAdminToken();
         adminSessions.set(token, { expiresAt: Date.now() + ADMIN_SESSION_EXPIRY });
+        
+        res.cookie('adminToken', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: ADMIN_SESSION_EXPIRY,
+          path: '/'
+        });
+
         return res.json({ success: true, token });
       }
       return res.status(401).json({ message: "Invalid password" });

@@ -28,41 +28,13 @@ const GAME_TYPES = [
 const ADMIN_TOKEN_KEY = 'newspals_admin_token';
 const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
 
-function getStoredToken(): string | null {
-  return sessionStorage.getItem(ADMIN_TOKEN_KEY);
-}
-
-function setStoredToken(token: string): void {
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-}
-
-function clearStoredToken(): void {
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-}
-
 async function validateSession(): Promise<boolean> {
   try {
-    const sessionRes = await fetch("/api/admin/session", {
-      credentials: "same-origin",
-    });
+    const sessionRes = await fetch("/api/admin/session");
     if (sessionRes.ok) {
       return true;
     }
   } catch {}
-  
-  const token = getStoredToken();
-  if (token) {
-    try {
-      const res = await fetch("/api/admin/session", {
-        headers: { "x-admin-token": token },
-        credentials: "same-origin",
-      });
-      if (res.ok) {
-        return true;
-      }
-    } catch {}
-    clearStoredToken();
-  }
   return false;
 }
 
@@ -87,7 +59,6 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
 
       if (res.ok) {
         const data = await res.json();
-        setStoredToken(data.token);
         toast({ title: "Admin access granted!" });
         onSuccess();
       } else {
@@ -178,11 +149,9 @@ function ImageUploadField({
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/game-image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
       });
 
@@ -314,11 +283,9 @@ function MultiImageUploadField({
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/game-image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
       });
 
@@ -487,11 +454,9 @@ function InlineImageUploadButton({ onUpload }: { onUpload: (url: string) => void
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/game-image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
       });
 
@@ -1173,20 +1138,14 @@ export default function AdminGames() {
     checkSession();
   }, []);
 
-  const token = getStoredToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (token) {
-    headers["x-admin-token"] = token;
-  }
 
   const { data: games = [], isLoading, error } = useQuery<StoryGame[]>({
     queryKey: ["/api/admin/games"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/games", {
-        headers: token ? { "x-admin-token": token } : {},
-      });
+      const res = await fetch("/api/admin/games");
       if (!res.ok) throw new Error("Failed to fetch games");
       return res.json();
     },

@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { createServer } from "http";
 import fs from "fs";
@@ -9,6 +10,7 @@ import { storage } from "./storage";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.use(cookieParser());
 const httpServer = createServer(app);
 
 declare module "http" {

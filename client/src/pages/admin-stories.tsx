@@ -18,7 +18,6 @@ import { CATEGORIES as ALL_CATEGORIES } from "@/lib/data";
 import type { Story } from "@shared/schema";
 
 const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
-const ADMIN_TOKEN_KEY = 'newspals_admin_token';
 
 // Regex for matching image tags (Must match story.tsx logic)
 const IMAGE_TAG_REGEX = /\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]/g;
@@ -70,7 +69,6 @@ function AudioGenerator({ content }: { content: string }) {
     }
 
     setProgress({ current: 0, total: textParagraphs.length });
-    const token = getStoredToken();
 
     // 3. Process each paragraph
     for (let i = 0; i < textParagraphs.length; i++) {
@@ -81,8 +79,7 @@ function AudioGenerator({ content }: { content: string }) {
         const res = await fetch("/api/admin/generate-audio", {
           method: "POST",
           headers: { 
-            "Content-Type": "application/json",
-            ...(token ? { "x-admin-token": token } : {})
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({ text })
         });
@@ -159,34 +156,14 @@ function AudioGenerator({ content }: { content: string }) {
 }
 
 
-function getStoredToken(): string | null {
-  return sessionStorage.getItem(ADMIN_TOKEN_KEY);
-}
-
-function setStoredToken(token: string): void {
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-}
-
-function clearStoredToken(): void {
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-}
-
 async function validateSession(): Promise<boolean> {
-  const token = getStoredToken();
-  if (!token) return false;
-  
   try {
-    const res = await fetch("/api/admin/session", {
-      headers: { "x-admin-token": token },
-    });
-    if (!res.ok) {
-      clearStoredToken();
-      return false;
+    const res = await fetch("/api/admin/session");
+    if (res.ok) {
+      return true;
     }
-    return true;
-  } catch {
-    return false;
-  }
+  } catch {}
+  return false;
 }
 
 function generateSlug(title: string): string {
@@ -215,8 +192,7 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setStoredToken(data.token);
+        await res.json();
         toast({ title: "Admin access granted!" });
         onSuccess();
       } else {
@@ -339,11 +315,9 @@ function StoryForm({
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
       });
 
@@ -384,11 +358,9 @@ function StoryForm({
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/story-content-image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
       });
 
@@ -927,7 +899,6 @@ export default function AdminStories() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/admin/stories/${id}`, {
         method: "DELETE",
-        headers: token ? { "x-admin-token": token } : {},
       });
       if (!res.ok) throw new Error("Failed to delete story");
       return res.json();
