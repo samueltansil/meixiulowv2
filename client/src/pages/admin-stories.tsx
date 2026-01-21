@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import logo from "@assets/whypals-logo.png";
 import { CATEGORIES as ALL_CATEGORIES } from "@/lib/data";
-import type { Story } from "@shared/schema";
+import type { Story, InsertStory } from "@shared/schema";
 
 const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
 
@@ -908,16 +908,21 @@ export default function AdminStories() {
 
   if (!isAuthenticated) {
     return <AdminLoginDialog onSuccess={() => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
-      setIsAuthenticated(true);
+      // Small delay to ensure cookie is processed
+      setTimeout(() => {
+        queryClient.resetQueries({ queryKey: ["/api/admin/stories"] });
+        setIsAuthenticated(true);
+      }, 100);
     }} />;
   }
 
   if (error) {
     if (error.message === "Unauthorized") {
       return <AdminLoginDialog onSuccess={() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
-        setIsAuthenticated(true);
+        setTimeout(() => {
+          queryClient.resetQueries({ queryKey: ["/api/admin/stories"] });
+          setIsAuthenticated(true);
+        }, 100);
       }} />;
     }
     return (

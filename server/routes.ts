@@ -46,23 +46,22 @@ function generateAdminToken(): string {
 function isValidAdminSession(req: any): boolean {
   const token = req.headers['x-admin-token'] || req.cookies?.adminToken;
   console.log('[AuthDebug] Checking admin session. Token present:', !!token);
-  if (token) {
-    console.log('[AuthDebug] Token value:', token.substring(0, 10) + '...');
-    const session = adminSessions.get(token);
-    console.log('[AuthDebug] Session found in map:', !!session);
-    if (session) {
-      console.log('[AuthDebug] Session expires at:', new Date(session.expiresAt).toISOString(), 'Now:', new Date().toISOString());
-    }
-  } else {
+  
+  if (!token) {
     console.log('[AuthDebug] No admin token found in headers or cookies');
-    console.log('[AuthDebug] Cookies:', req.cookies);
-    console.log('[AuthDebug] Headers:', req.headers);
+    console.log('[AuthDebug] Cookies keys:', Object.keys(req.cookies || {}));
+    return false;
   }
-
-  if (!token) return false;
   
   const session = adminSessions.get(token);
-  if (!session) return false;
+  console.log('[AuthDebug] Token:', token.substring(0, 10) + '...', 'Session found:', !!session);
+  
+  if (!session) {
+    console.log('[AuthDebug] Session not found in memory map');
+    console.log('[AuthDebug] Map size:', adminSessions.size);
+    // console.log('[AuthDebug] Map keys:', Array.from(adminSessions.keys()).map(k => k.substring(0, 10) + '...'));
+    return false;
+  }
   
   if (Date.now() > session.expiresAt) {
     console.log('[AuthDebug] Session expired');

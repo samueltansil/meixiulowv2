@@ -1147,6 +1147,7 @@ export default function AdminGames() {
     queryKey: ["/api/admin/games"],
     queryFn: async () => {
       const res = await fetch("/api/admin/games", { credentials: "include" });
+      if (res.status === 401) throw new Error("Unauthorized");
       if (!res.ok) throw new Error("Failed to fetch games");
       return res.json();
     },
@@ -1258,9 +1259,36 @@ export default function AdminGames() {
 
   if (!isAuthenticated) {
     return <AdminLoginDialog onSuccess={() => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
-      setIsAuthenticated(true);
+      // Small delay to ensure cookie is processed
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
+        setIsAuthenticated(true);
+      }, 100);
     }} />;
+  }
+
+  if (error) {
+    if (error.message === "Unauthorized") {
+      return <AdminLoginDialog onSuccess={() => {
+        // Small delay to ensure cookie is processed
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
+          setIsAuthenticated(true);
+        }, 100);
+      }} />;
+    }
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-600" />
+          </div>
+          <h1 className="font-heading text-2xl font-bold text-foreground">Error</h1>
+          <p className="text-muted-foreground text-sm mt-2 mb-6">{error.message}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
