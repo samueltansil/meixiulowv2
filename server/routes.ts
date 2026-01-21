@@ -45,12 +45,27 @@ function generateAdminToken(): string {
 
 function isValidAdminSession(req: any): boolean {
   const token = req.headers['x-admin-token'] || req.cookies?.adminToken;
+  console.log('[AuthDebug] Checking admin session. Token present:', !!token);
+  if (token) {
+    console.log('[AuthDebug] Token value:', token.substring(0, 10) + '...');
+    const session = adminSessions.get(token);
+    console.log('[AuthDebug] Session found in map:', !!session);
+    if (session) {
+      console.log('[AuthDebug] Session expires at:', new Date(session.expiresAt).toISOString(), 'Now:', new Date().toISOString());
+    }
+  } else {
+    console.log('[AuthDebug] No admin token found in headers or cookies');
+    console.log('[AuthDebug] Cookies:', req.cookies);
+    console.log('[AuthDebug] Headers:', req.headers);
+  }
+
   if (!token) return false;
   
   const session = adminSessions.get(token);
   if (!session) return false;
   
   if (Date.now() > session.expiresAt) {
+    console.log('[AuthDebug] Session expired');
     adminSessions.delete(token);
     return false;
   }

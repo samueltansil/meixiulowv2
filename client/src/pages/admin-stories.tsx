@@ -837,95 +837,101 @@ export default function AdminStories() {
     queryKey: ["/api/admin/stories"],
     queryFn: async () => {
       const res = await fetch("/api/admin/stories", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch stories");
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Unauthorized");
+        }
+        throw new Error("Failed to fetch stories");
+      }
       return res.json();
     },
     enabled: isAuthenticated,
+    retry: false,
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: InsertStory) => {
       const res = await fetch("/api/admin/stories", {
         method: "POST",
         headers,
         body: JSON.stringify(data),
         credentials: "include",
       });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create story");
-      }
+      if (!res.ok) throw new Error("Failed to create story");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories/featured"] });
       setIsCreating(false);
-      toast({ title: "Story created successfully!" });
+      toast({ title: "Story created successfully" });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    onError: (error) => {
+      toast({ title: "Error creating story", description: error.message, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+    mutationFn: async ({ id, data }: { id: number; data: InsertStory }) => {
       const res = await fetch(`/api/admin/stories/${id}`, {
         method: "PUT",
         headers,
         body: JSON.stringify(data),
         credentials: "include",
       });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update story");
-      }
+      if (!res.ok) throw new Error("Failed to update story");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories/featured"] });
       setEditingStory(null);
-      toast({ title: "Story updated successfully!" });
+      toast({ title: "Story updated successfully" });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    onError: (error) => {
+      toast({ title: "Error updating story", description: error.message, variant: "destructive" });
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/admin/stories/${id}`, {
+  const handleDelete = async (story: Story) => {
+    if (!confirm("Are you sure you want to delete this story?")) return;
+    try {
+      const res = await fetch(`/api/admin/stories/${story.id}`, {
         method: "DELETE",
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete story");
-      return res.json();
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories/featured"] });
-      toast({ title: "Story deleted successfully!" });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete story", variant: "destructive" });
-    },
-  });
-
-  const handleDelete = (story: Story) => {
-    if (window.confirm(`Are you sure you want to delete "${story.title}"?`)) {
-      deleteMutation.mutate(story.id);
+      toast({ title: "Story deleted successfully" });
+    } catch (error: any) {
+      toast({ title: "Error deleting story", description: error.message, variant: "destructive" });
     }
   };
 
-  if (!isAuthenticated || error) {
+  if (!isAuthenticated) {
     return <AdminLoginDialog onSuccess={() => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
       setIsAuthenticated(true);
     }} />;
+  }
+
+  if (error) {
+    if (error.message === "Unauthorized") {
+      return <AdminLoginDialog onSuccess={() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
+        setIsAuthenticated(true);
+      }} />;
+    }
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-600" />
+          </div>
+          <h1 className="font-heading text-2xl font-bold text-foreground">Error</h1>
+          <p className="text-muted-foreground text-sm mt-2 mb-6">{error.message}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
