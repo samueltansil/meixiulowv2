@@ -75,7 +75,7 @@ app.use((req, res, next) => {
       const videos = await storage.getAllVideos();
       const games = await storage.getAllGames();
 
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const baseUrl = "https://whypals.com";
 
       const staticRoutes = [
         "/",
