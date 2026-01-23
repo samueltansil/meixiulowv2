@@ -28,6 +28,7 @@ import ResetPassword from "@/pages/reset-password";
 import About from "@/pages/about";
 import Contact from "@/pages/contact";
 import { useAuth } from "@/hooks/useAuth";
+import { CanonicalTag } from "@/components/canonical-tag";
 
 const { Helmet } = ReactHelmetAsync;
 
@@ -126,6 +127,7 @@ function Router() {
 function App() {
   return (
     <TooltipProvider>
+      <CanonicalTag />
       <Helmet>
         <title>WhyPals - News for Kids</title>
       </Helmet>
