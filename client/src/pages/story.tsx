@@ -11,9 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import type { Story, StoryGame, Video } from "@shared/schema";
 import { format } from "date-fns";
-import * as ReactHelmetAsync from "react-helmet-async";
-
-const { Helmet } = ReactHelmetAsync;
+import { Helmet } from "@/lib/helmet";
 
 const IMAGE_TAG_REGEX = /\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]/g;
 const FULL_IMAGE_TAG_REGEX = /^\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]$/;

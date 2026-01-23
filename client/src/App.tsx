@@ -1,5 +1,5 @@
 import { Switch, Route } from "wouter";
-import * as ReactHelmetAsync from "react-helmet-async";
+import { Helmet } from "@/lib/helmet";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -30,8 +30,6 @@ import Contact from "@/pages/contact";
 import { useAuth } from "@/hooks/useAuth";
 import { CanonicalTag } from "@/components/canonical-tag";
 
-const { Helmet } = ReactHelmetAsync;
-
 function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -45,10 +43,7 @@ function LoadingScreen() {
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
-
-  // If loading but we have valid initial data (from SSR), we shouldn't show the loading screen
-  // unless we are truly waiting for critical data that prevents rendering.
-  // In our case, SSR provides data or null.
+  
   if (isLoading) {
     // If we have SSR data, isLoading should technically be false if configured correctly,
     // but if it is true, we want to avoid replacing the SSR content with a spinner.
@@ -125,6 +120,8 @@ function Router() {
 }
 
 function App() {
+  // console.log('[SSR] App rendering');
+  
   return (
     <TooltipProvider>
       <CanonicalTag />
@@ -136,5 +133,7 @@ function App() {
     </TooltipProvider>
   );
 }
+
+
 
 export default App;

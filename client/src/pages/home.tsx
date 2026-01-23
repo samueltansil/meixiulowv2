@@ -13,9 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Story, Banner } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import ProfileButton from "@/components/ProfileButton";
-import * as ReactHelmetAsync from "react-helmet-async";
-
-const { Helmet } = ReactHelmetAsync;
+import { Helmet } from "@/lib/helmet";
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string>("All");

@@ -1,13 +1,15 @@
 import { renderToString } from "react-dom/server";
 import { dehydrate, HydrationBoundary, QueryClientProvider } from "@tanstack/react-query";
-import * as ReactHelmetAsync from "react-helmet-async";
 import { createQueryClient } from "./lib/queryClient";
+import { HelmetProvider } from "./lib/helmet";
 import { Router } from "wouter";
 import App from "./App";
 import "./index.css";
 
 export async function render(url: string) {
   try {
+    console.log(`[SSR] Rendering url: ${url}`);
+
     const queryClient = createQueryClient();
 
     // Set default auth state to null (not logged in) for SSR to avoid loading state
@@ -35,21 +37,18 @@ export async function render(url: string) {
     // Simple static location hook for SSR
     const hook = () => [url, () => {}] as [string, (to: string) => void];
     const helmetContext: any = {};
-    const { HelmetProvider } = ReactHelmetAsync;
     
-    console.log(`[SSR] Rendering url: ${url}`);
-
     const html = renderToString(
-      <HelmetProvider context={helmetContext}>
-        <QueryClientProvider client={queryClient}>
-          <HydrationBoundary state={dehydrate(queryClient)}>
-            <Router hook={hook}>
-              <App />
-            </Router>
-          </HydrationBoundary>
-        </QueryClientProvider>
-      </HelmetProvider>
-    );
+       <HelmetProvider context={helmetContext}>
+         <QueryClientProvider client={queryClient}>
+           <HydrationBoundary state={dehydrate(queryClient)}>
+             <Router hook={hook}>
+               <App />
+             </Router>
+           </HydrationBoundary>
+         </QueryClientProvider>
+       </HelmetProvider>
+     );
     
     const dehydratedState = dehydrate(queryClient);
     const { helmet } = helmetContext;

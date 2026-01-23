@@ -7,7 +7,7 @@
     "dev": "tsx watch server/index.ts",
     "build": "npm run build:client && npm run build:ssr && npm run build:server",
     "build:client": "vite build -c client/vite.config.ts",
-    "build:ssr": "vite build -c client/vite.config.ts --ssr src/entry-server.tsx --outDir client/dist/server",
+    "build:ssr": "vite build -c client/vite.config.ts --ssr src/entry-server.tsx --outDir dist/server",
     "build:server": "esbuild server/index.ts --bundle --platform=node --outfile=dist/server.js --format=esm --packages=external",
     "start": "NODE_ENV=production node dist/server.js",
     "check": "tsc",

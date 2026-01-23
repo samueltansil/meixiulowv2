@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Helmet } from "react-helmet-async";
+import { Helmet } from "@/lib/helmet";
 
 export function CanonicalTag() {
   const [location] = useLocation();
