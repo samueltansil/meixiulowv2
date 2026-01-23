@@ -189,32 +189,43 @@ app.use((req, res, next) => {
       }
     });
   } else {
-    // Production SSR setup would go here
-    // For now, we can reuse the logic or set up a proper production build flow
-     const dist = path.resolve(root, "client/dist");
-     if (fs.existsSync(dist)) {
-       app.use(express.static(dist, { index: false }));
-       app.use("*", async (req, res, next) => {
-         try {
-           const url = req.originalUrl;
-           const template = fs.readFileSync(path.resolve(dist, "index.html"), "utf-8");
-           // In a real prod setup, you'd import the server entry built by Vite
-           // const { render } = await import("./dist/server/entry-server.js");
-           // For simplicity in this step, we might need a separate server build
-           // or just serve static if SSR build isn't fully ready yet.
-           // However, to fulfill the request, we should aim for SSR.
-           // Let's assume a server build exists or fallback to client-side for now if complexities arise,
-           // but the user explicitly requested SSR.
-           
-           // NOTE: Production SSR requires a server build. 
-           // We'll update package.json to build server entry and then use it here.
-           // For now, let's keep the structure ready for the build step update.
-           res.sendFile(path.resolve(dist, "index.html"));
-         } catch (e) {
-           next(e);
-         }
-       });
-     }
+    // Production SSR
+    const dist = path.resolve(root, "client/dist");
+    if (fs.existsSync(dist)) {
+      app.use(express.static(dist, { index: false }));
+      
+      app.use("*", async (req, res, next) => {
+        try {
+          const url = req.originalUrl;
+          const template = fs.readFileSync(path.resolve(dist, "index.html"), "utf-8");
+          
+          // Load the server entry built by Vite
+          const serverEntryPath = path.resolve(dist, "server/entry-server.js");
+          const { render } = await import(serverEntryPath);
+          
+          const { html, dehydratedState, helmet } = await render(url);
+          
+          const helmetHead = `
+            ${helmet.title.toString()}
+            ${helmet.meta.toString()}
+            ${helmet.link.toString()}
+            ${helmet.script.toString()}
+          `;
+          
+          const appHtml = template.replace(`<!--app-html-->`, html)
+                                  .replace(`<!--app-head-->`, helmetHead)
+                                  .replace(
+                                    `<!--app-state-->`,
+                                    `<script>window.__REACT_QUERY_STATE__ = ${JSON.stringify(dehydratedState)}</script>`
+                                  );
+          
+          res.status(200).set({ "Content-Type": "text/html" }).end(appHtml);
+        } catch (e) {
+          console.error("SSR Error:", e);
+          next(e);
+        }
+      });
+    }
   }
 
   const port = parseInt(process.env.PORT || "5000", 10);
