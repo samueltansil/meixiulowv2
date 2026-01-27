@@ -18,13 +18,3 @@ hydrateRoot(
     </QueryClientProvider>
   </HelmetProvider>
 );
-
-// Remove the anti-FOUC style once the app is hydrated and styles are loaded
-// Use requestAnimationFrame to ensure the paint cycle has occurred
-requestAnimationFrame(() => {
-  const style = document.getElementById('anti-fouc');
-  if (style) {
-    style.remove();
-    document.body.style.opacity = '1';
-  }
-});

@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Plus, Edit, Trash2, ArrowLeft, Save, X, Eye, EyeOff, Search, Filter, Gamepad2, Lock, Upload, Loader2, Shield } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1074,70 +1073,22 @@ function GameRow({ game, onEdit, onDelete }: { game: StoryGame; onEdit: () => vo
 }
 
 export default function AdminGames() {
-  const { user, isLoading: authLoading } = useAuth();
   const [editingGame, setEditingGame] = useState<StoryGame | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const { data: isSessionValid, isLoading: isCheckingSession } = useQuery({
+    queryKey: ["adminSession"],
+    queryFn: validateSession,
+    retry: false,
+    staleTime: 0
+  });
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Admin Access</h1>
-          <p className="text-muted-foreground text-sm mt-2 mb-6">Please log in to your account first to access the admin panel.</p>
-          <Link href="/login">
-            <Button className="w-full">Log In</Button>
-          </Link>
-          <div className="mt-4">
-            <Link href="/">
-              <Button variant="link" size="sm">Return to Home</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com", "meixiu.low@gmail.com"];
-  if (!user.email || !ALLOWED_ADMIN_EMAILS.includes(user.email)) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-red-600" />
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Access Denied</h1>
-          <p className="text-muted-foreground text-sm mt-2 mb-6">Your account is not authorized to access the admin panel.</p>
-          <Link href="/">
-            <Button className="w-full">Return to Home</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const isValid = await validateSession();
-      setIsAuthenticated(isValid);
-    };
-    checkSession();
-  }, []);
+  const isAuthenticated = !!isSessionValid;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -1152,6 +1103,7 @@ export default function AdminGames() {
       return res.json();
     },
     enabled: isAuthenticated,
+    retry: false,
   });
 
   const createMutation = useMutation({
@@ -1257,24 +1209,48 @@ export default function AdminGames() {
     return matchesSearch && matchesType;
   });
 
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
-    return <AdminLoginDialog onSuccess={() => {
-      // Small delay to ensure cookie is processed
-      setTimeout(() => {
+    if (showPasswordLogin) {
+      return <AdminLoginDialog onSuccess={() => {
+        queryClient.invalidateQueries({ queryKey: ["adminSession"] });
         queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
-        setIsAuthenticated(true);
-      }, 100);
-    }} />;
+        setShowPasswordLogin(false);
+      }} />;
+    }
+
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="font-heading text-2xl font-bold text-foreground">Admin Access</h1>
+          <p className="text-muted-foreground text-sm mt-2 mb-6">Enter the admin password to access the game management panel.</p>
+          <Button className="w-full mb-4" onClick={() => setShowPasswordLogin(true)}>
+            Use Admin Password
+          </Button>
+          <Link href="/">
+            <Button variant="outline" className="w-full">Return to Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     if (error.message === "Unauthorized") {
       return <AdminLoginDialog onSuccess={() => {
         // Small delay to ensure cookie is processed
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
-          setIsAuthenticated(true);
-        }, 100);
+        queryClient.invalidateQueries({ queryKey: ["adminSession"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
       }} />;
     }
     return (

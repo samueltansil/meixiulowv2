@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { StoryGame, Banner } from "@shared/schema";
 import ProfileButton from "@/components/ProfileButton";
 import playPlaceholder from "@/assets/play-placeholder.png";
+import { Helmet } from "@/lib/helmet";
 
 const GAME_TYPE_ICONS: Record<string, typeof Puzzle> = {
   puzzle: Puzzle,
@@ -110,6 +111,10 @@ export default function Games() {
 
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
+      <Helmet>
+        <title>Educational Games for Kids - WhyPals</title>
+        <meta name="description" content="Play fun educational games for kids! Puzzles, quizzes, and matching games to learn about history, science, and current events." />
+      </Helmet>
       <nav className="p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 font-heading text-2xl font-bold text-primary hover:opacity-80 transition-opacity">

@@ -43,13 +43,39 @@ function generateAdminToken(): string {
   return randomBytes(32).toString('hex');
 }
 
-function isValidAdminSession(req: any): boolean {
+async function isValidAdminSession(req: any): Promise<boolean> {
+  console.log('[AuthDebug] isValidAdminSession called');
+  // If we have an active user session, check if they are an admin
+  if (req.session?.userId) {
+    console.log('[AuthDebug] User session found:', req.session.userId);
+    try {
+      const user = await storage.getUser(req.session.userId);
+      const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com", "meixiu.low@gmail.com"];
+      if (user) {
+         console.log('[AuthDebug] User found:', user.email);
+         if (user.email && ALLOWED_ADMIN_EMAILS.includes(user.email)) {
+           console.log('[AuthDebug] User is admin');
+           return true;
+         } else {
+           console.log('[AuthDebug] User is NOT admin');
+         }
+      } else {
+        console.log('[AuthDebug] User not found in DB');
+      }
+    } catch (e) {
+      console.error("Error verifying admin user session:", e);
+    }
+  } else {
+    console.log('[AuthDebug] No user session found');
+  }
+
+  // Fallback to token-based auth (for backward compatibility or if session is missing but cookie exists)
+  // Note: This is fragile if server restarts, so session-based is preferred.
   const token = req.headers['x-admin-token'] || req.cookies?.adminToken;
   console.log('[AuthDebug] Checking admin session. Token present:', !!token);
   
   if (!token) {
-    console.log('[AuthDebug] No admin token found in headers or cookies');
-    console.log('[AuthDebug] Cookies keys:', Object.keys(req.cookies || {}));
+    // console.log('[AuthDebug] No admin token found in headers or cookies');
     return false;
   }
   
@@ -58,8 +84,6 @@ function isValidAdminSession(req: any): boolean {
   
   if (!session) {
     console.log('[AuthDebug] Session not found in memory map');
-    console.log('[AuthDebug] Map size:', adminSessions.size);
-    // console.log('[AuthDebug] Map keys:', Array.from(adminSessions.keys()).map(k => k.substring(0, 10) + '...'));
     return false;
   }
   
@@ -111,17 +135,6 @@ export async function registerRoutes(
 
   app.post('/api/admin/login', async (req: any, res) => {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Please log in to your account first" });
-      }
-
-      const user = await storage.getUser(req.session.userId);
-      const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com", "meixiu.low@gmail.com"];
-      
-      if (!user || !user.email || !ALLOWED_ADMIN_EMAILS.includes(user.email)) {
-        return res.status(403).json({ message: "Access denied: Unauthorized account" });
-      }
-
       const { password } = req.body;
       if (!password) {
         return res.status(400).json({ message: "Password is required" });
@@ -148,7 +161,7 @@ export async function registerRoutes(
   });
 
   app.get('/api/admin/session', async (req: any, res) => {
-    if (isValidAdminSession(req)) {
+    if (await isValidAdminSession(req)) {
       return res.json({ valid: true });
     }
     return res.status(401).json({ valid: false, message: "Session expired or invalid" });
@@ -156,14 +169,14 @@ export async function registerRoutes(
 
   // Admin: Teacher verification endpoints disabled
   app.get('/api/admin/teacher-verifications', async (req: any, res) => {
-    if (!isValidAdminSession(req)) {
+    if (!await isValidAdminSession(req)) {
       return res.status(401).json({ message: "Admin authentication required" });
     }
     return res.status(200).json([]);
   });
 
   app.post('/api/admin/teacher-verifications/:userId', async (req: any, res) => {
-    if (!isValidAdminSession(req)) {
+    if (!await isValidAdminSession(req)) {
       return res.status(401).json({ message: "Admin authentication required" });
     }
     return res.status(400).json({ message: "Teacher verification is disabled" });
@@ -813,7 +826,7 @@ export async function registerRoutes(
   // Image upload for game images - admin only
   app.post('/api/admin/upload/game-image', upload.single('image'), async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -840,7 +853,7 @@ export async function registerRoutes(
   // Image upload for story content images - admin only
   app.post('/api/admin/upload/story-content-image', upload.single('image'), async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -867,7 +880,7 @@ export async function registerRoutes(
   // Image upload for video thumbnails - admin only
   app.post('/api/admin/upload/video-thumbnail', upload.single('image'), async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -894,7 +907,7 @@ export async function registerRoutes(
   // Image upload for banners - admin only
   app.post('/api/admin/upload/banner', upload.single('image'), async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      if (!await isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
       if (!req.file) return res.status(400).json({ message: "No image file provided" });
       const { key } = await uploadImageToR2(req.file.buffer, req.file.originalname, req.file.mimetype, 'banners');
       const imageUrl = `/api/images/${key}`;
@@ -986,7 +999,7 @@ export async function registerRoutes(
   // Story routes - admin only
   app.get('/api/admin/stories', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       const stories = await storage.getAllStories();
@@ -1023,7 +1036,7 @@ export async function registerRoutes(
 
   app.put('/api/admin/stories/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 

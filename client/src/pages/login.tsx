@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import logo from "@assets/whypals-logo.png";
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
+import { Helmet } from "@/lib/helmet";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -54,6 +55,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4 relative">
+      <Helmet>
+        <title>Login - WhyPals</title>
+        <meta name="description" content="Log in to your WhyPals account to access educational news, games, and stories for kids." />
+      </Helmet>
       <div className="absolute top-4 left-4">
         <Link href="/">
           <Button variant="ghost" size="sm" className="gap-2">

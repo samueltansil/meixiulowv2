@@ -72,17 +72,16 @@ app.use((req, res, next) => {
   app.get("/sitemap.xml", async (req, res) => {
     try {
       const stories = await storage.getPublishedStories();
-      const videos = await storage.getAllVideos();
       const games = await storage.getAllGames();
 
       const baseUrl = "https://whypals.com";
 
       const staticRoutes = [
-        "/",
-        "/videos",
-        "/games",
-        "/about",
-        "/contact"
+        { url: "/", priority: 1.0 },
+        { url: "/login", priority: 0.9 },
+        { url: "/games", priority: 0.9 },
+        { url: "/about", priority: 0.7 },
+        { url: "/contact", priority: 0.6 }
       ];
 
       let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
@@ -92,9 +91,9 @@ app.use((req, res, next) => {
       staticRoutes.forEach(route => {
         sitemap += `
   <url>
-    <loc>${baseUrl}${route}</loc>
+    <loc>${baseUrl}${route.url}</loc>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
+    <priority>${route.priority}</priority>
   </url>`;
       });
 
@@ -106,16 +105,6 @@ app.use((req, res, next) => {
     <lastmod>${new Date(story.updatedAt || story.publishedAt || Date.now()).toISOString()}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-  </url>`;
-      });
-
-      // Videos
-      videos.forEach(video => {
-        sitemap += `
-  <url>
-    <loc>${baseUrl}/video/${video.id}</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
   </url>`;
       });
 

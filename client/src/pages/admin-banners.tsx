@@ -186,17 +186,17 @@ function BannerForm({
 export default function AdminBanners() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
 
-  useEffect(() => {
-    validateSession().then((valid) => {
-      setIsAuthenticated(valid);
-      setIsCheckingSession(false);
-    });
-  }, []);
+  const { data: isSessionValid, isLoading: isCheckingSession } = useQuery({
+    queryKey: ["adminSession"],
+    queryFn: validateSession,
+    retry: false,
+    staleTime: 0
+  });
+
+  const isAuthenticated = !!isSessionValid;
 
   const { data: banners, isLoading } = useQuery<Banner[]>({
     queryKey: ['/api/banners'],
@@ -288,7 +288,10 @@ export default function AdminBanners() {
   }
 
   if (!isAuthenticated) {
-    return <AdminLoginDialog onSuccess={() => setIsAuthenticated(true)} />;
+    return <AdminLoginDialog onSuccess={() => {
+      queryClient.invalidateQueries({ queryKey: ["adminSession"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/banners'] });
+    }} />;
   }
 
   return (

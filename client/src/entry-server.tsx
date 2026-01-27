@@ -14,6 +14,7 @@ export async function render(url: string) {
 
     // Set default auth state to null (not logged in) for SSR to avoid loading state
     queryClient.setQueryData(["/api/auth/me"], null);
+    queryClient.setQueryData(["adminSession"], false);
 
     // Prefetch data based on URL
     if (url === '/') {

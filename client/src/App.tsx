@@ -1,7 +1,8 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { Helmet } from "@/lib/helmet";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Games from "@/pages/games";
@@ -43,16 +44,11 @@ function LoadingScreen() {
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
+  const isAdminRoute = location.startsWith('/admin');
   
-  if (isLoading) {
-    // If we have SSR data, isLoading should technically be false if configured correctly,
-    // but if it is true, we want to avoid replacing the SSR content with a spinner.
-    // However, if we are on the client and truly loading (e.g. navigation), we might need it.
-    // For the initial load, we want to suppress this if possible.
-    // A simple heuristic: if we are in the first render cycle and have SSR content (document.getElementById('root')?.hasChildNodes()), 
-    // we might want to delay showing the loader. 
-    // But a cleaner React way is to trust that useAuth won't be loading if we hydrated correctly.
-    // If we ARE seeing the loading screen, it means useAuth IS loading.
+  // Show loading screen only if it's NOT an admin route and we are loading auth
+  if (isLoading && !isAdminRoute) {
     return (
       <Switch>
         <Route path="/register" component={Register} />
@@ -60,62 +56,50 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/verify-parent" component={VerifyParent} />
-        {/* Avoid full screen loader flash on hydration if possible, but keep for navigation */}
         <Route component={LoadingScreen} />
       </Switch>
     );
   }
 
-  if (!isAuthenticated) {
-    return (
+  return (
+    <ErrorBoundary>
       <Switch>
+        {/* Admin Routes - Priority */}
+        <Route path="/admin/stories" component={AdminStories} />
+        <Route path="/admin/videos" component={AdminVideos} />
+        <Route path="/admin/games" component={AdminGames} />
+        <Route path="/admin/banners" component={AdminBanners} />
+
+        {/* Auth Routes */}
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/verify-parent" component={VerifyParent} />
+
+        {/* Public Routes */}
         <Route path="/" component={Home} />
-        <Route path="/videos" component={Videos} />
-        <Route path="/games" component={Games} />
-        <Route path="/game/:id" component={GamePreview} />
-        <Route path="/story/:id" component={Story} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
-        <Route path="/admin/stories" component={AdminStories} />
-        <Route path="/admin/videos" component={AdminVideos} />
-        <Route path="/admin/games" component={AdminGames} />
-        <Route path="/admin/banners" component={AdminBanners} />
-        <Route component={Home} />
-      </Switch>
-    );
-  }
+        <Route path="/games" component={Games} />
+        <Route path="/game/:id" component={GamePreview} />
+        <Route path="/videos" component={Videos} />
+        <Route path="/story/:id" component={Story} />
 
-  return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/register" component={Register} />
-      <Route path="/login" component={Login} />
-      <Route path="/verify-parent" component={VerifyParent} />
-      <Route path="/about" component={About} />
-      <Route path="/contact" component={Contact} />
-      <Route path="/games" component={Games} />
-      <Route path="/game/:id" component={GamePreview} />
-      <Route path="/videos" component={Videos} />
-      <Route path="/video/:id" component={VideoPlayer} />
-      <Route path="/r2-video/:key" component={R2VideoPlayer} />
-      <Route path="/story/:id" component={Story} />
-      <Route path="/teachers" component={Teachers} />
-      <Route path="/marketplace" component={Marketplace} />
-      <Route path="/marketplace/:id" component={CourseworkDetail} />
-      <Route path="/teacher/:id" component={TeacherProfile} />
-      <Route path="/leaderboard" component={Leaderboard} />
-      <Route path="/settings" component={Settings} />
-      <Route path="/admin/stories" component={AdminStories} />
-      <Route path="/admin/videos" component={AdminVideos} />
-      <Route path="/admin/games" component={AdminGames} />
-      <Route path="/admin/banners" component={AdminBanners} />
-      <Route component={NotFound} />
-    </Switch>
+        {/* Protected Routes - Only match if authenticated */}
+        {isAuthenticated ? <Route path="/video/:id" component={VideoPlayer} /> : null}
+        {isAuthenticated ? <Route path="/r2-video/:key" component={R2VideoPlayer} /> : null}
+        {isAuthenticated ? <Route path="/teachers" component={Teachers} /> : null}
+        {isAuthenticated ? <Route path="/marketplace" component={Marketplace} /> : null}
+        {isAuthenticated ? <Route path="/marketplace/:id" component={CourseworkDetail} /> : null}
+        {isAuthenticated ? <Route path="/teacher/:id" component={TeacherProfile} /> : null}
+        {isAuthenticated ? <Route path="/leaderboard" component={Leaderboard} /> : null}
+        {isAuthenticated ? <Route path="/settings" component={Settings} /> : null}
+
+        {/* Fallback */}
+        <Route component={isAuthenticated ? NotFound : Home} />
+      </Switch>
+    </ErrorBoundary>
   );
 }
 
