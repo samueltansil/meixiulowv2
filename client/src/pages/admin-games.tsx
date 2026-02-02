@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@assets/whypals-logo.png";
-import type { StoryGame, PuzzleGameConfig, WhackGameConfig, MatchGameConfig, QuizGameConfig, TimelineGameConfig } from "@shared/schema";
+import type { StoryGame, PuzzleGameConfig, WhackGameConfig, MatchGameConfig, QuizGameConfig, TimelineGameConfig, PollGameConfig } from "@shared/schema";
 import { CATEGORIES as ALL_CATEGORIES } from "@/lib/data";
 
 const GAME_TYPES = [
@@ -22,6 +22,7 @@ const GAME_TYPES = [
   { value: "match", label: "Memory Match", icon: "🃏" },
   { value: "quiz", label: "Quiz", icon: "❓" },
   { value: "timeline", label: "Timeline", icon: "📅" },
+  { value: "poll", label: "Poll", icon: "📊" },
 ];
 
 const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
@@ -717,6 +718,105 @@ function TimelineConfigEditor({ config, onChange }: { config: TimelineGameConfig
   );
 }
 
+function PollConfigEditor({ config, onChange }: { config: PollGameConfig; onChange: (config: PollGameConfig) => void }) {
+  const questions = config.questions || [];
+  
+  const addQuestion = () => {
+    onChange({
+      ...config,
+      questions: [...questions, { id: `q-${Date.now()}`, question: "", options: ["", ""] }]
+    });
+  };
+  
+  const updateQuestion = (index: number, field: string, value: any) => {
+    const newQuestions = [...questions];
+    newQuestions[index] = { ...newQuestions[index], [field]: value };
+    onChange({ ...config, questions: newQuestions });
+  };
+  
+  const updateOption = (qIndex: number, optIndex: number, value: string) => {
+    const newQuestions = [...questions];
+    newQuestions[qIndex].options[optIndex] = value;
+    onChange({ ...config, questions: newQuestions });
+  };
+
+  const addOption = (qIndex: number) => {
+    const newQuestions = [...questions];
+    newQuestions[qIndex].options.push("");
+    onChange({ ...config, questions: newQuestions });
+  }
+
+  const removeOption = (qIndex: number, optIndex: number) => {
+    const newQuestions = [...questions];
+    newQuestions[qIndex].options = newQuestions[qIndex].options.filter((_, i) => i !== optIndex);
+    onChange({ ...config, questions: newQuestions });
+  }
+  
+  const removeQuestion = (index: number) => {
+    onChange({ ...config, questions: questions.filter((_, i) => i !== index) });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>Poll Questions</Label>
+        <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
+          <Plus className="w-4 h-4 mr-1" /> Add Question
+        </Button>
+      </div>
+      <div className="space-y-4 max-h-96 overflow-y-auto">
+        {questions.map((q, qIndex) => (
+          <div key={q.id} className="p-4 bg-muted/50 rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">Question {qIndex + 1}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => removeQuestion(qIndex)}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+            <Input
+              value={q.question}
+              onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
+              placeholder="Enter question..."
+            />
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Options</Label>
+              {q.options.map((opt, optIndex) => (
+                <div key={optIndex} className="flex items-center gap-2">
+                  <Input
+                    value={opt}
+                    onChange={(e) => updateOption(qIndex, optIndex, e.target.value)}
+                    placeholder={`Option ${optIndex + 1}`}
+                    className="flex-1"
+                  />
+                  {q.options.length > 2 && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeOption(qIndex, optIndex)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="ghost" size="sm" className="text-xs" onClick={() => addOption(qIndex)}>
+                <Plus className="w-3 h-3 mr-1" /> Add Option
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {questions.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">Add poll questions</p>
+      )}
+      <div className="space-y-2">
+        <Label>Completion Message</Label>
+        <Input
+          value={config.winMessage || ""}
+          onChange={(e) => onChange({ ...config, winMessage: e.target.value })}
+          placeholder="Poll Complete! Thanks for voting."
+        />
+      </div>
+    </div>
+  );
+}
+
 function GameForm({ 
   game, 
   onSave, 
@@ -759,6 +859,8 @@ function GameForm({
         return { questions: [], passingScore: 60, winMessage: "Great Job!" };
       case "timeline":
         return { events: [], winMessage: "Perfect Order!" };
+      case "poll":
+        return { questions: [], winMessage: "Poll Complete! Thanks for voting." };
       default:
         return {};
     }
@@ -999,6 +1101,9 @@ function GameForm({
           )}
           {gameType === "timeline" && (
             <TimelineConfigEditor config={config as TimelineGameConfig} onChange={setConfig} />
+          )}
+          {gameType === "poll" && (
+            <PollConfigEditor config={config as PollGameConfig} onChange={setConfig} />
           )}
         </TabsContent>
       </Tabs>

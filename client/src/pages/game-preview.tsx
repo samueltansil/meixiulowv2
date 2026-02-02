@@ -1,5 +1,5 @@
 import { Link, useParams, useLocation } from "wouter";
-import { ArrowLeft, Play, Trophy, Clock, Users, Gamepad2, CheckCircle, Star, Puzzle, Target, Sparkles, HelpCircle, Calendar } from "lucide-react";
+import { ArrowLeft, Play, Trophy, Clock, Users, Gamepad2, CheckCircle, Star, Puzzle, Target, Sparkles, HelpCircle, Calendar, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@assets/whypals-logo.png";
 import { motion } from "framer-motion";
@@ -13,6 +13,7 @@ import WhackAMoleGame from "@/components/games/WhackAMoleGame";
 import MemoryMatchGame from "@/components/games/MemoryMatchGame";
 import QuizGame from "@/components/games/QuizGame";
 import TimelineGame from "@/components/games/TimelineGame";
+import PollGame from "@/components/games/PollGame";
 import { useGameAudio } from "@/hooks/useGameAudio";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +24,7 @@ const GAME_TYPE_ICONS: Record<string, typeof Puzzle> = {
   match: Sparkles,
   quiz: HelpCircle,
   timeline: Calendar,
+  poll: BarChart2,
 };
 
 const GAME_TYPE_COLORS: Record<string, string> = {
@@ -31,6 +33,7 @@ const GAME_TYPE_COLORS: Record<string, string> = {
   match: "bg-emerald-100 text-emerald-600",
   quiz: "bg-blue-100 text-blue-600",
   timeline: "bg-orange-100 text-orange-600",
+  poll: "bg-indigo-100 text-indigo-600",
 };
 
 export default function GamePreview() {
@@ -209,6 +212,17 @@ export default function GamePreview() {
           )}
           {game.gameType === "timeline" && (
             <TimelineGame 
+              config={game.config as any} 
+              onComplete={handleGameComplete}
+              onBack={handleBackToGames}
+              backgroundMusicUrl={(game as any).backgroundMusicUrl}
+              soundEffectsEnabled={(game as any).soundEffectsEnabled !== false}
+              pointsReward={game.pointsReward || 0}
+            />
+          )}
+          {game.gameType === "poll" && (
+            <PollGame 
+              gameId={game.id}
               config={game.config as any} 
               onComplete={handleGameComplete}
               onBack={handleBackToGames}

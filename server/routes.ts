@@ -1306,6 +1306,48 @@ export async function registerRoutes(
     }
   });
 
+  // Poll Routes
+  app.post('/api/games/:id/vote', async (req: any, res) => {
+    try {
+      const gameId = parseInt(req.params.id);
+      const { questionId, optionIndex } = req.body;
+      
+      const vote = await storage.createPollVote({
+        gameId,
+        questionId,
+        optionIndex,
+        userId: req.session.userId || null,
+      });
+      
+      res.json(vote);
+    } catch (error) {
+      console.error("Error submitting vote:", error);
+      res.status(500).json({ message: "Failed to submit vote" });
+    }
+  });
+
+  app.get('/api/games/:id/results', async (req: any, res) => {
+    try {
+      const gameId = parseInt(req.params.id);
+      const votes = await storage.getPollVotes(gameId);
+
+      // Aggregate results
+      const results: Record<string, Record<number, number>> = {};
+      
+      votes.forEach(vote => {
+        if (!results[vote.questionId]) {
+          results[vote.questionId] = {};
+        }
+        results[vote.questionId][vote.optionIndex] = (results[vote.questionId][vote.optionIndex] || 0) + 1;
+      });
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching poll results:", error);
+      res.status(500).json({ message: "Failed to fetch poll results" });
+    }
+  });
+
   app.post('/api/admin/generate-audio', async (req: any, res) => {
     try {
       if (!isValidAdminSession(req)) {

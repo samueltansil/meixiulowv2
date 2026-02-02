@@ -220,7 +220,7 @@ export const updateStorySchema = createInsertSchema(stories).omit({
 // Game templates linked to stories by title for scalability
 export const storyGames = pgTable("story_games", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  gameType: varchar("game_type", { length: 50 }).notNull(), // puzzle, match, quiz, whack, timeline
+  gameType: varchar("game_type", { length: 50 }).notNull(), // puzzle, match, quiz, whack, timeline, poll
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   thumbnail: text("thumbnail"),
@@ -241,8 +241,22 @@ export const storyGames = pgTable("story_games", {
   index("idx_story_games_game_type").on(table.gameType),
 ]);
 
+export const pollVotes = pgTable("poll_votes", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  gameId: integer("game_id").references(() => storyGames.id).notNull(),
+  questionId: varchar("question_id").notNull(),
+  optionIndex: integer("option_index").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_poll_votes_game").on(table.gameId),
+  index("idx_poll_votes_user").on(table.userId),
+]);
+
 export type InsertStoryGame = typeof storyGames.$inferInsert;
 export type StoryGame = typeof storyGames.$inferSelect;
+export type InsertPollVote = typeof pollVotes.$inferInsert;
+export type PollVote = typeof pollVotes.$inferSelect;
 
 export const insertStoryGameSchema = createInsertSchema(storyGames).omit({
   createdAt: true,
@@ -306,6 +320,15 @@ export interface TimelineGameConfig {
     description?: string;
     image?: string;
     order: number;
+  }>;
+  winMessage?: string;
+}
+
+export interface PollGameConfig {
+  questions: Array<{
+    id: string;
+    question: string;
+    options: string[];
   }>;
   winMessage?: string;
 }

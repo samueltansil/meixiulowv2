@@ -31,6 +31,9 @@ import {
   parentVerificationRequests,
   type InsertParentVerificationRequest,
   type ParentVerificationRequest,
+  pollVotes,
+  type PollVote,
+  type InsertPollVote,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, isNull } from "drizzle-orm";
@@ -87,6 +90,10 @@ export interface IStorage {
   updateGame(id: number, game: Partial<InsertStoryGame>): Promise<StoryGame>;
   deleteGame(id: number): Promise<void>;
   
+  // Polls
+  createPollVote(vote: InsertPollVote): Promise<PollVote>;
+  getPollVotes(gameId: number): Promise<PollVote[]>;
+
   // Coursework Marketplace
   getAllCoursework(): Promise<CourseworkItem[]>;
   getPublishedCoursework(): Promise<CourseworkItem[]>;
@@ -443,6 +450,16 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGame(id: number): Promise<void> {
     await db.delete(storyGames).where(eq(storyGames.id, id));
+  }
+
+  // Polls
+  async createPollVote(vote: InsertPollVote): Promise<PollVote> {
+    const [newVote] = await db.insert(pollVotes).values(vote).returning();
+    return newVote;
+  }
+
+  async getPollVotes(gameId: number): Promise<PollVote[]> {
+    return await db.select().from(pollVotes).where(eq(pollVotes.gameId, gameId));
   }
 
   // Coursework Marketplace
