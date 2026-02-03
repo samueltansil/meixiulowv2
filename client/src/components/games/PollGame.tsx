@@ -105,28 +105,38 @@ export default function PollGame({
 
   if (isComplete) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center space-y-8 animate-in fade-in zoom-in duration-500">
+      <div className="flex flex-col items-center justify-center p-8 text-center space-y-6 animate-in fade-in zoom-in duration-500">
         <div className="relative">
           <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 rounded-full" />
-          <BarChart2 className="w-24 h-24 text-primary relative z-10" />
+          <BarChart2 className="w-16 h-16 text-primary relative z-10" />
         </div>
         
         <div className="space-y-4 max-w-md mx-auto">
-          <h2 className="text-3xl font-heading font-bold text-foreground">
+          <h2 className="text-2xl font-heading font-bold text-foreground">
             {config.winMessage || "Poll Complete!"}
           </h2>
-          <p className="text-muted-foreground text-lg">
-            Thanks for sharing your opinion! You earned {pointsReward} points.
-          </p>
+          {pointsReward && pointsReward > 0 ? (
+            <p className="text-muted-foreground text-lg">
+              Thanks for sharing your opinion! You earned {pointsReward} points.
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-lg">
+              Thanks for sharing your opinion!
+            </p>
+          )}
         </div>
 
         <div className="flex gap-4">
-          <Button variant="outline" size="lg" onClick={onBack}>
-            Back to Games
-          </Button>
-          <Button size="lg" onClick={restartGame}>
-            Play Again
-          </Button>
+          {onBack && (
+            <Button variant="outline" size="lg" onClick={onBack}>
+              Back to Games
+            </Button>
+          )}
+          {onBack && (
+            <Button size="lg" onClick={restartGame}>
+              Play Again
+            </Button>
+          )}
         </div>
       </div>
     );

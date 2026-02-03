@@ -69,7 +69,7 @@ export default function GamePreview() {
   });
 
   const handleStartGame = () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && game?.gameType !== 'poll') {
       toast({ title: "Log in to play game" });
       navigate(`/login?redirect=${encodeURIComponent(`/game/${gameId}`)}`);
       return;

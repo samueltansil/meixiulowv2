@@ -66,7 +66,9 @@ export default function Games() {
   });
 
   const allFeaturedItems = [
-    ...featuredGames.map(g => ({ type: 'game' as const, data: g })),
+    ...featuredGames
+      .filter(g => g.gameType !== 'poll')
+      .map(g => ({ type: 'game' as const, data: g })),
     ...banners.map(b => ({ type: 'banner' as const, data: b }))
   ];
 
@@ -106,7 +108,8 @@ export default function Games() {
     const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     game.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === "All" || (Array.isArray(game.category) && game.category.includes(activeCategory));
-    return matchesSearch && matchesCategory;
+    const isNotPoll = game.gameType !== 'poll';
+    return matchesSearch && matchesCategory && isNotPoll;
   });
 
   return (
