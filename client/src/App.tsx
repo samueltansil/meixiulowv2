@@ -84,10 +84,10 @@ function Router() {
         <Route path="/games" component={Games} />
         <Route path="/game/:id" component={GamePreview} />
         <Route path="/videos" component={Videos} />
+        <Route path="/video/:id" component={VideoPlayer} />
         <Route path="/story/:id" component={Story} />
 
         {/* Protected Routes - Only match if authenticated */}
-        {isAuthenticated ? <Route path="/video/:id" component={VideoPlayer} /> : null}
         {isAuthenticated ? <Route path="/r2-video/:key" component={R2VideoPlayer} /> : null}
         {isAuthenticated ? <Route path="/teachers" component={Teachers} /> : null}
         {isAuthenticated ? <Route path="/marketplace" component={Marketplace} /> : null}
