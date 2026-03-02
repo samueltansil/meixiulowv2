@@ -35,9 +35,9 @@ export const getQueryFn: <T>(options: {
     // Check if we are in a browser environment
     const isServer = typeof window === 'undefined';
     if (isServer && url.startsWith('/')) {
-        // In SSR, we need a full URL. Assuming localhost:5000 for internal API calls during SSR
+        // In SSR, we need a full URL. Assuming localhost:3001 for internal API calls during SSR
         // This port should match the server configuration
-        url = `http://localhost:5000${url}`;
+        url = `http://localhost:3001${url}`;
     }
 
     const res = await fetch(url, {
