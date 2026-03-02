@@ -462,7 +462,9 @@ export const insertQuestionSchema = createInsertSchema(questions).omit({
   answeredAt: true,
 });
 
-export const updateQuestionSchema = createInsertSchema(questions).omit({
+export const updateQuestionSchema = createInsertSchema(questions, {
+  answeredAt: z.union([z.string().pipe(z.coerce.date()), z.null()]),
+}).omit({
   createdAt: true,
   storyId: true,
   userId: true,

@@ -1,13 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { useState } from "react";
 import { HelpCircle, Loader2, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { Question, Story } from "@shared/schema";
 import logo from "@/assets/whypals-logo.png";
 
 export default function BigWhyPage() {
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const { data: questions, isLoading } = useQuery<Question[]>({
     queryKey: ["/api/questions/published"],
   });
@@ -89,14 +97,24 @@ export default function BigWhyPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {questions?.map((q) => (
-              <Card key={q.id} className="overflow-hidden border border-border/50 bg-card hover:shadow-lg transition-all duration-300 group rounded-2xl">
+              <Card 
+                key={q.id} 
+                className="overflow-hidden border border-border/50 bg-card hover:shadow-lg transition-all duration-300 group rounded-2xl cursor-pointer"
+                onClick={() => setSelectedQuestion(q)}
+              >
                 <CardHeader className="bg-muted/30 pb-4 border-b border-border/50">
-                  <div className="text-xs font-bold text-primary uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-primary"></span>
-                    {getStoryTitle(q.storyId)}
+                  <div className="text-xs font-bold text-primary uppercase tracking-widest mb-3">
+                    <Link 
+                      href={`/story/${q.storyId}`} 
+                      className="hover:underline hover:text-primary/80 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="opacity-70 mr-1">From:</span>
+                      <span>{getStoryTitle(q.storyId)}</span>
+                    </Link>
                   </div>
                   <CardTitle className="font-heading text-2xl leading-tight text-foreground group-hover:text-primary transition-colors">
-                    "{q.question}"
+                    {q.question}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
@@ -121,6 +139,35 @@ export default function BigWhyPage() {
             ))}
           </div>
         )}
+
+        <Dialog open={!!selectedQuestion} onOpenChange={(open) => !open && setSelectedQuestion(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border/50">
+            <DialogHeader>
+              <div className="text-sm font-bold text-primary uppercase tracking-widest mb-2">
+                <span className="opacity-70 mr-1">From:</span>
+                <Link 
+                  href={selectedQuestion ? `/story/${selectedQuestion.storyId}` : '#'} 
+                  className="hover:underline hover:text-primary/80 transition-colors"
+                >
+                  {selectedQuestion && getStoryTitle(selectedQuestion.storyId)}
+                </Link>
+              </div>
+              <DialogTitle className="font-heading text-3xl leading-tight text-foreground mb-4">
+                {selectedQuestion?.question}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="prose prose-slate prose-lg mt-4 max-w-none">
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {selectedQuestion?.answer}
+              </p>
+            </div>
+            {selectedQuestion?.answeredAt && (
+               <div className="mt-8 pt-4 border-t border-border/50 text-sm text-muted-foreground flex items-center justify-end">
+                  Answered on {format(new Date(selectedQuestion.answeredAt), 'MMMM d, yyyy')}
+               </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
