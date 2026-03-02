@@ -714,7 +714,7 @@ export async function registerRoutes(
 
   app.post('/api/r2/metadata', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       
@@ -739,7 +739,7 @@ export async function registerRoutes(
 
   app.delete('/api/r2/metadata/:key(*)', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       
@@ -846,7 +846,7 @@ export async function registerRoutes(
 
   app.get('/api/admin/story-stats', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       const excluded = ["samueljuliustansil@gmail.com", "meixiu.low@gmail.com"];
@@ -861,7 +861,7 @@ export async function registerRoutes(
   // Image upload for story thumbnails - admin only (server-side upload to avoid CORS)
   app.post('/api/admin/upload/image', upload.single('image'), async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -982,7 +982,7 @@ export async function registerRoutes(
   // Banners CRUD
   app.get('/api/banners', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      if (!await isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
       const banners = await storage.getBanners();
       res.json(banners);
     } catch (error) {
@@ -1001,7 +1001,7 @@ export async function registerRoutes(
 
   app.post('/api/banners', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      if (!await isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
       
       const result = insertBannerSchema.safeParse(req.body);
       if (!result.success) {
@@ -1020,7 +1020,7 @@ export async function registerRoutes(
 
   app.delete('/api/banners/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      if (!await isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
       const id = parseInt(req.params.id);
       await storage.deleteBanner(id);
       res.status(204).send();
@@ -1031,7 +1031,7 @@ export async function registerRoutes(
 
   app.patch('/api/banners/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      if (!await isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
       const id = parseInt(req.params.id);
       const banner = await storage.updateBanner(id, req.body);
       res.json(banner);
@@ -1074,7 +1074,7 @@ export async function registerRoutes(
 
   app.post('/api/admin/stories', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1129,7 +1129,7 @@ export async function registerRoutes(
 
   app.delete('/api/admin/stories/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1181,7 +1181,7 @@ export async function registerRoutes(
   // Admin Question Routes
   app.get('/api/admin/questions', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       const questions = await storage.getAllQuestions();
@@ -1194,7 +1194,7 @@ export async function registerRoutes(
 
   app.patch('/api/admin/questions/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1214,7 +1214,7 @@ export async function registerRoutes(
 
   app.delete('/api/admin/questions/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1230,7 +1230,7 @@ export async function registerRoutes(
   // Admin Video Routes
   app.get('/api/admin/videos', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       const videos = await storage.getAllVideos();
@@ -1243,7 +1243,7 @@ export async function registerRoutes(
 
   app.post('/api/admin/videos', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1266,7 +1266,7 @@ export async function registerRoutes(
 
   app.put('/api/admin/videos/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1292,7 +1292,7 @@ export async function registerRoutes(
 
   app.delete('/api/admin/videos/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1353,7 +1353,7 @@ export async function registerRoutes(
 
   app.get('/api/admin/games', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       const games = await storage.getAllGames();
@@ -1366,7 +1366,7 @@ export async function registerRoutes(
 
   app.post('/api/admin/games', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1387,7 +1387,7 @@ export async function registerRoutes(
 
   app.put('/api/admin/games/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1414,7 +1414,7 @@ export async function registerRoutes(
 
   app.delete('/api/admin/games/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1497,12 +1497,12 @@ export async function registerRoutes(
 
   app.post('/api/admin/generate-audio', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const { text } = req.body;
-      if (!text || typeof text !== 'string') {
+      const { text, voiceId } = req.body;
+      if (!text) {
         return res.status(400).json({ message: "Text is required" });
       }
 
