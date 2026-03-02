@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Plus, Edit, Trash2, ArrowLeft, Save, X, Eye, EyeOff, Search, Filter, Gamepad2, Lock, Upload, Loader2, Shield } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@assets/whypals-logo.png";
-import type { StoryGame, PuzzleGameConfig, WhackGameConfig, MatchGameConfig, QuizGameConfig, TimelineGameConfig } from "@shared/schema";
+import type { StoryGame, PuzzleGameConfig, WhackGameConfig, MatchGameConfig, QuizGameConfig, TimelineGameConfig, PollGameConfig } from "@shared/schema";
 import { CATEGORIES as ALL_CATEGORIES } from "@/lib/data";
 
 const GAME_TYPES = [
@@ -23,46 +22,18 @@ const GAME_TYPES = [
   { value: "match", label: "Memory Match", icon: "🃏" },
   { value: "quiz", label: "Quiz", icon: "❓" },
   { value: "timeline", label: "Timeline", icon: "📅" },
+  { value: "poll", label: "Poll", icon: "📊" },
 ];
 
-const ADMIN_TOKEN_KEY = 'newspals_admin_token';
 const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
-
-function getStoredToken(): string | null {
-  return sessionStorage.getItem(ADMIN_TOKEN_KEY);
-}
-
-function setStoredToken(token: string): void {
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-}
-
-function clearStoredToken(): void {
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-}
 
 async function validateSession(): Promise<boolean> {
   try {
-    const sessionRes = await fetch("/api/admin/session", {
-      credentials: "same-origin",
-    });
+    const sessionRes = await fetch("/api/admin/session", { credentials: "include" });
     if (sessionRes.ok) {
       return true;
     }
   } catch {}
-  
-  const token = getStoredToken();
-  if (token) {
-    try {
-      const res = await fetch("/api/admin/session", {
-        headers: { "x-admin-token": token },
-        credentials: "same-origin",
-      });
-      if (res.ok) {
-        return true;
-      }
-    } catch {}
-    clearStoredToken();
-  }
   return false;
 }
 
@@ -82,12 +53,11 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
-        credentials: "same-origin",
+        credentials: "include",
       });
 
       if (res.ok) {
         const data = await res.json();
-        setStoredToken(data.token);
         toast({ title: "Admin access granted!" });
         onSuccess();
       } else {
@@ -178,12 +148,11 @@ function ImageUploadField({
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/game-image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
+        credentials: "include",
       });
 
       if (!uploadRes.ok) {
@@ -314,12 +283,11 @@ function MultiImageUploadField({
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/game-image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
+        credentials: "include",
       });
 
       if (!uploadRes.ok) {
@@ -487,11 +455,9 @@ function InlineImageUploadButton({ onUpload }: { onUpload: (url: string) => void
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/game-image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
       });
 
@@ -752,6 +718,105 @@ function TimelineConfigEditor({ config, onChange }: { config: TimelineGameConfig
   );
 }
 
+function PollConfigEditor({ config, onChange }: { config: PollGameConfig; onChange: (config: PollGameConfig) => void }) {
+  const questions = config.questions || [];
+  
+  const addQuestion = () => {
+    onChange({
+      ...config,
+      questions: [...questions, { id: `q-${Date.now()}`, question: "", options: ["", ""] }]
+    });
+  };
+  
+  const updateQuestion = (index: number, field: string, value: any) => {
+    const newQuestions = [...questions];
+    newQuestions[index] = { ...newQuestions[index], [field]: value };
+    onChange({ ...config, questions: newQuestions });
+  };
+  
+  const updateOption = (qIndex: number, optIndex: number, value: string) => {
+    const newQuestions = [...questions];
+    newQuestions[qIndex].options[optIndex] = value;
+    onChange({ ...config, questions: newQuestions });
+  };
+
+  const addOption = (qIndex: number) => {
+    const newQuestions = [...questions];
+    newQuestions[qIndex].options.push("");
+    onChange({ ...config, questions: newQuestions });
+  }
+
+  const removeOption = (qIndex: number, optIndex: number) => {
+    const newQuestions = [...questions];
+    newQuestions[qIndex].options = newQuestions[qIndex].options.filter((_, i) => i !== optIndex);
+    onChange({ ...config, questions: newQuestions });
+  }
+  
+  const removeQuestion = (index: number) => {
+    onChange({ ...config, questions: questions.filter((_, i) => i !== index) });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>Poll Questions</Label>
+        <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
+          <Plus className="w-4 h-4 mr-1" /> Add Question
+        </Button>
+      </div>
+      <div className="space-y-4 max-h-96 overflow-y-auto">
+        {questions.map((q, qIndex) => (
+          <div key={q.id} className="p-4 bg-muted/50 rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">Question {qIndex + 1}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => removeQuestion(qIndex)}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+            <Input
+              value={q.question}
+              onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
+              placeholder="Enter question..."
+            />
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Options</Label>
+              {q.options.map((opt, optIndex) => (
+                <div key={optIndex} className="flex items-center gap-2">
+                  <Input
+                    value={opt}
+                    onChange={(e) => updateOption(qIndex, optIndex, e.target.value)}
+                    placeholder={`Option ${optIndex + 1}`}
+                    className="flex-1"
+                  />
+                  {q.options.length > 2 && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeOption(qIndex, optIndex)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="ghost" size="sm" className="text-xs" onClick={() => addOption(qIndex)}>
+                <Plus className="w-3 h-3 mr-1" /> Add Option
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {questions.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">Add poll questions</p>
+      )}
+      <div className="space-y-2">
+        <Label>Completion Message</Label>
+        <Input
+          value={config.winMessage || ""}
+          onChange={(e) => onChange({ ...config, winMessage: e.target.value })}
+          placeholder="Poll Complete! Thanks for voting."
+        />
+      </div>
+    </div>
+  );
+}
+
 function GameForm({ 
   game, 
   onSave, 
@@ -794,6 +859,8 @@ function GameForm({
         return { questions: [], passingScore: 60, winMessage: "Great Job!" };
       case "timeline":
         return { events: [], winMessage: "Perfect Order!" };
+      case "poll":
+        return { questions: [], winMessage: "Poll Complete! Thanks for voting." };
       default:
         return {};
     }
@@ -1035,6 +1102,9 @@ function GameForm({
           {gameType === "timeline" && (
             <TimelineConfigEditor config={config as TimelineGameConfig} onChange={setConfig} />
           )}
+          {gameType === "poll" && (
+            <PollConfigEditor config={config as PollGameConfig} onChange={setConfig} />
+          )}
         </TabsContent>
       </Tabs>
 
@@ -1108,89 +1178,37 @@ function GameRow({ game, onEdit, onDelete }: { game: StoryGame; onEdit: () => vo
 }
 
 export default function AdminGames() {
-  const { user, isLoading: authLoading } = useAuth();
   const [editingGame, setEditingGame] = useState<StoryGame | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const { data: isSessionValid, isLoading: isCheckingSession } = useQuery({
+    queryKey: ["adminSession"],
+    queryFn: validateSession,
+    retry: false,
+    staleTime: 0
+  });
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Admin Access</h1>
-          <p className="text-muted-foreground text-sm mt-2 mb-6">Please log in to your account first to access the admin panel.</p>
-          <Link href="/login">
-            <Button className="w-full">Log In</Button>
-          </Link>
-          <div className="mt-4">
-            <Link href="/">
-              <Button variant="link" size="sm">Return to Home</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const isAuthenticated = !!isSessionValid;
 
-  const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com", "meixiu.low@gmail.com"];
-  if (!user.email || !ALLOWED_ADMIN_EMAILS.includes(user.email)) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-red-600" />
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Access Denied</h1>
-          <p className="text-muted-foreground text-sm mt-2 mb-6">Your account is not authorized to access the admin panel.</p>
-          <Link href="/">
-            <Button className="w-full">Return to Home</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const isValid = await validateSession();
-      setIsAuthenticated(isValid);
-    };
-    checkSession();
-  }, []);
-
-  const token = getStoredToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (token) {
-    headers["x-admin-token"] = token;
-  }
 
   const { data: games = [], isLoading, error } = useQuery<StoryGame[]>({
     queryKey: ["/api/admin/games"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/games", {
-        headers: token ? { "x-admin-token": token } : {},
-      });
+      const res = await fetch("/api/admin/games", { credentials: "include" });
+      if (res.status === 401) throw new Error("Unauthorized");
       if (!res.ok) throw new Error("Failed to fetch games");
       return res.json();
     },
     enabled: isAuthenticated,
+    retry: false,
   });
 
   const createMutation = useMutation({
@@ -1199,6 +1217,7 @@ export default function AdminGames() {
         method: "POST",
         headers,
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         let message = "";
@@ -1267,7 +1286,7 @@ export default function AdminGames() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/admin/games/${id}`, {
         method: "DELETE",
-        headers: token ? { "x-admin-token": token } : {},
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete game");
       return res.json();
@@ -1295,11 +1314,62 @@ export default function AdminGames() {
     return matchesSearch && matchesType;
   });
 
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
-    return <AdminLoginDialog onSuccess={() => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
-      setIsAuthenticated(true);
-    }} />;
+    if (showPasswordLogin) {
+      return <AdminLoginDialog onSuccess={() => {
+        queryClient.invalidateQueries({ queryKey: ["adminSession"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
+        setShowPasswordLogin(false);
+      }} />;
+    }
+
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="font-heading text-2xl font-bold text-foreground">Admin Access</h1>
+          <p className="text-muted-foreground text-sm mt-2 mb-6">Enter the admin password to access the game management panel.</p>
+          <Button className="w-full mb-4" onClick={() => setShowPasswordLogin(true)}>
+            Use Admin Password
+          </Button>
+          <Link href="/">
+            <Button variant="outline" className="w-full">Return to Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    if (error.message === "Unauthorized") {
+      return <AdminLoginDialog onSuccess={() => {
+        // Small delay to ensure cookie is processed
+        queryClient.invalidateQueries({ queryKey: ["adminSession"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
+      }} />;
+    }
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-600" />
+          </div>
+          <h1 className="font-heading text-2xl font-bold text-foreground">Error</h1>
+          <p className="text-muted-foreground text-sm mt-2 mb-6">{error.message}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
   }
 
   return (

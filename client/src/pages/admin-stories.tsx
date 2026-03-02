@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Plus, Edit, Trash2, Eye, EyeOff, Star, ArrowLeft, Save, X, Upload, Loader2, Lock, Shield, Volume2, CheckCircle, AlertCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,10 +14,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import logo from "@assets/whypals-logo.png";
 import { CATEGORIES as ALL_CATEGORIES } from "@/lib/data";
-import type { Story } from "@shared/schema";
+import type { Story, InsertStory } from "@shared/schema";
 
 const CATEGORIES = ALL_CATEGORIES.map(c => c.id);
-const ADMIN_TOKEN_KEY = 'newspals_admin_token';
 
 // Regex for matching image tags (Must match story.tsx logic)
 const IMAGE_TAG_REGEX = /\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]/g;
@@ -70,7 +68,6 @@ function AudioGenerator({ content }: { content: string }) {
     }
 
     setProgress({ current: 0, total: textParagraphs.length });
-    const token = getStoredToken();
 
     // 3. Process each paragraph
     for (let i = 0; i < textParagraphs.length; i++) {
@@ -81,10 +78,10 @@ function AudioGenerator({ content }: { content: string }) {
         const res = await fetch("/api/admin/generate-audio", {
           method: "POST",
           headers: { 
-            "Content-Type": "application/json",
-            ...(token ? { "x-admin-token": token } : {})
+            "Content-Type": "application/json"
           },
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ text }),
+          credentials: "include"
         });
         
         if (!res.ok) {
@@ -159,34 +156,14 @@ function AudioGenerator({ content }: { content: string }) {
 }
 
 
-function getStoredToken(): string | null {
-  return sessionStorage.getItem(ADMIN_TOKEN_KEY);
-}
-
-function setStoredToken(token: string): void {
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-}
-
-function clearStoredToken(): void {
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-}
-
 async function validateSession(): Promise<boolean> {
-  const token = getStoredToken();
-  if (!token) return false;
-  
   try {
-    const res = await fetch("/api/admin/session", {
-      headers: { "x-admin-token": token },
-    });
-    if (!res.ok) {
-      clearStoredToken();
-      return false;
+    const res = await fetch("/api/admin/session", { credentials: "include" });
+    if (res.ok) {
+      return true;
     }
-    return true;
-  } catch {
-    return false;
-  }
+  } catch {}
+  return false;
 }
 
 function generateSlug(title: string): string {
@@ -212,11 +189,11 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
+        credentials: "include",
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setStoredToken(data.token);
+        await res.json();
         toast({ title: "Admin access granted!" });
         onSuccess();
       } else {
@@ -339,12 +316,11 @@ function StoryForm({
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
+        credentials: "include"
       });
 
       if (!uploadRes.ok) {
@@ -384,12 +360,11 @@ function StoryForm({
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const token = getStoredToken();
 
       const uploadRes = await fetch('/api/admin/upload/story-content-image', {
         method: 'POST',
-        headers: token ? { 'x-admin-token': token } : {},
         body: formData,
+        credentials: "include"
       });
 
       if (!uploadRes.ok) {
@@ -772,6 +747,9 @@ function StoryRow({ story, views, reads, onEdit, onDelete }: { story: Story; vie
           </span>
         )}
       </td>
+      <td className="py-4 px-4">
+        <span className="text-sm font-medium">{story.views || 0}</span>
+      </td>
       <td className="py-4 px-4 text-right">
         <span className="text-sm font-medium">{views}</span>
       </td>
@@ -793,14 +771,98 @@ function StoryRow({ story, views, reads, onEdit, onDelete }: { story: Story; vie
 }
 
 export default function AdminStories() {
-  const { user, isLoading: authLoading } = useAuth();
   const [editingStory, setEditingStory] = useState<Story | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  if (authLoading) {
+  const { data: isSessionValid, isLoading: isCheckingSession } = useQuery({
+    queryKey: ["adminSession"],
+    queryFn: validateSession,
+    retry: false,
+    staleTime: 0
+  });
+
+  const isAuthenticated = !!isSessionValid;
+
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  const { data: stories = [], isLoading, error } = useQuery<Story[]>({
+    queryKey: ["/api/admin/stories"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/stories", { credentials: "include" });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Unauthorized");
+        }
+        throw new Error("Failed to fetch stories");
+      }
+      return res.json();
+    },
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: InsertStory) => {
+      const res = await fetch("/api/admin/stories", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to create story");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
+      setIsCreating(false);
+      toast({ title: "Story created successfully" });
+    },
+    onError: (error) => {
+      toast({ title: "Error creating story", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: InsertStory }) => {
+      const res = await fetch(`/api/admin/stories/${id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to update story");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
+      setEditingStory(null);
+      toast({ title: "Story updated successfully" });
+    },
+    onError: (error) => {
+      toast({ title: "Error updating story", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleDelete = async (story: Story) => {
+    if (!confirm("Are you sure you want to delete this story?")) return;
+    try {
+      const res = await fetch(`/api/admin/stories/${story.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete story");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
+      toast({ title: "Story deleted successfully" });
+    } catch (error: any) {
+      toast({ title: "Error deleting story", description: error.message, variant: "destructive" });
+    }
+  };
+
+  if (isCheckingSession) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -808,46 +870,35 @@ export default function AdminStories() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Admin Access</h1>
-          <p className="text-muted-foreground text-sm mt-2 mb-6">Please log in to your account first to access the admin panel.</p>
-          <Link href="/login">
-            <Button className="w-full">Log In</Button>
-          </Link>
-          <div className="mt-4">
-            <Link href="/">
-              <Button variant="link" size="sm">Return to Home</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+  if (!isAuthenticated) {
+    return <AdminLoginDialog onSuccess={() => {
+      queryClient.invalidateQueries({ queryKey: ["adminSession"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
+    }} />;
   }
 
-  const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com", "meixiu.low@gmail.com"];
-  if (!user.email || !ALLOWED_ADMIN_EMAILS.includes(user.email)) {
+  if (error) {
+    if (error.message === "Unauthorized") {
+      return <AdminLoginDialog onSuccess={() => {
+        queryClient.resetQueries({ queryKey: ["/api/admin/stories"] });
+        queryClient.invalidateQueries({ queryKey: ["adminSession"] });
+      }} />;
+    }
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-red-600" />
           </div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Access Denied</h1>
-          <p className="text-muted-foreground text-sm mt-2 mb-6">Your account is not authorized to access the admin panel.</p>
-          <Link href="/">
-            <Button className="w-full">Return to Home</Button>
-          </Link>
+          <h1 className="font-heading text-2xl font-bold text-foreground">Error</h1>
+          <p className="text-muted-foreground text-sm mt-2 mb-6">{error.message}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     );
   }
 
+<<<<<<< HEAD
   useEffect(() => {
     const checkSession = async () => {
       const isValid = await validateSession();
@@ -979,6 +1030,8 @@ export default function AdminStories() {
     }} />;
   }
 
+=======
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
       <nav className="p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">
@@ -1039,8 +1092,12 @@ export default function AdminStories() {
                   <th className="text-left py-3 px-4 font-heading text-sm">Category</th>
                   <th className="text-left py-3 px-4 font-heading text-sm">Featured</th>
                   <th className="text-left py-3 px-4 font-heading text-sm">Status</th>
+<<<<<<< HEAD
                   <th className="text-right py-3 px-4 font-heading text-sm">Views</th>
                   <th className="text-right py-3 px-4 font-heading text-sm">Read Aloud</th>
+=======
+                  <th className="text-left py-3 px-4 font-heading text-sm">Views</th>
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
                   <th className="text-right py-3 px-4 font-heading text-sm">Actions</th>
                 </tr>
               </thead>

@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Plus, Edit, Trash2, ArrowLeft, Save, X, Eye, Star, Lock, Shield, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,36 +16,15 @@ import logo from "@assets/whypals-logo.png";
 import type { Video } from "@shared/schema";
 
 const CATEGORIES = ["Science", "Nature", "Sports", "World", "Fun", "Music", "Art"];
-const ADMIN_TOKEN_KEY = 'newspals_admin_token';
-
-function getStoredToken(): string | null {
-  return sessionStorage.getItem(ADMIN_TOKEN_KEY);
-}
-
-function setStoredToken(token: string): void {
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-}
-
-function clearStoredToken(): void {
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-}
 
 async function validateSession(): Promise<boolean> {
-  const token = getStoredToken();
-  if (!token) return false;
-  
   try {
-    const res = await fetch("/api/admin/session", {
-      headers: { "x-admin-token": token },
-    });
-    if (!res.ok) {
-      clearStoredToken();
-      return false;
+    const res = await fetch("/api/admin/session", { credentials: "include" });
+    if (res.ok) {
+      return true;
     }
-    return true;
-  } catch {
-    return false;
-  }
+  } catch {}
+  return false;
 }
 
 function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -65,11 +43,10 @@ function AdminLoginDialog({ onSuccess }: { onSuccess: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
+        credentials: "include",
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setStoredToken(data.token);
         toast({ title: "Admin access granted!" });
         onSuccess();
       } else {
@@ -230,7 +207,6 @@ function VideoForm({
         value={thumbnail}
         onChange={setThumbnail}
         placeholder="https://..."
-        token={getStoredToken()}
         uploadEndpoint="/api/admin/upload/video-thumbnail"
         testid="input-video-thumbnail"
         previewClassName="w-32 h-20"
@@ -337,21 +313,20 @@ function VideoRow({ video, onEdit, onDelete }: { video: Video; onEdit: () => voi
 }
 
 export default function AdminVideos() {
-  const { user, isLoading: authLoading } = useAuth();
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const { data: isSessionValid, isLoading: isCheckingSession } = useQuery({
+    queryKey: ["adminSession"],
+    queryFn: validateSession,
+    retry: false,
+    staleTime: 0
+  });
 
+<<<<<<< HEAD
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -407,16 +382,23 @@ export default function AdminVideos() {
   if (token) {
     headers["x-admin-token"] = token;
   }
+=======
+  const isAuthenticated = !!isSessionValid;
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 
   const { data: videos = [], isLoading, error } = useQuery<Video[]>({
     queryKey: ["/api/admin/videos"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/videos", {
-        headers: token ? { "x-admin-token": token } : {},
-      });
-      if (!res.ok) throw new Error("Failed to fetch videos");
+      const res = await fetch("/api/admin/videos", { credentials: "include" });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Unauthorized");
+        }
+        throw new Error("Failed to fetch videos");
+      }
       return res.json();
     },
+    retry: false,
     enabled: isAuthenticated,
   });
 
@@ -424,8 +406,9 @@ export default function AdminVideos() {
     mutationFn: async (data: any) => {
       const res = await fetch("/api/admin/videos", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const error = await res.json();
@@ -449,8 +432,9 @@ export default function AdminVideos() {
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
       const res = await fetch(`/api/admin/videos/${id}`, {
         method: "PUT",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const error = await res.json();
@@ -474,7 +458,7 @@ export default function AdminVideos() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/admin/videos/${id}`, {
         method: "DELETE",
-        headers: token ? { "x-admin-token": token } : {},
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete video");
       return res.json();
@@ -490,17 +474,67 @@ export default function AdminVideos() {
     },
   });
 
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    if (showPasswordLogin) {
+      return <AdminLoginDialog onSuccess={() => {
+        queryClient.invalidateQueries({ queryKey: ["adminSession"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
+        setShowPasswordLogin(false);
+      }} />;
+    }
+
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="font-heading text-2xl font-bold text-foreground">Admin Access</h1>
+          <p className="text-muted-foreground text-sm mt-2 mb-6">Enter the admin password to access the video management panel.</p>
+          <Button className="w-full mb-4" onClick={() => setShowPasswordLogin(true)}>
+            Use Admin Password
+          </Button>
+          <Link href="/">
+            <Button variant="outline" className="w-full">Return to Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const handleDelete = (video: Video) => {
     if (window.confirm(`Are you sure you want to delete "${video.title}"?`)) {
       deleteMutation.mutate(video.id);
     }
   };
 
-  if (!isAuthenticated || error) {
-    return <AdminLoginDialog onSuccess={() => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
-      setIsAuthenticated(true);
-    }} />;
+  if (error) {
+    if (error.message === "Unauthorized") {
+      return <AdminLoginDialog onSuccess={() => {
+        queryClient.invalidateQueries({ queryKey: ["adminSession"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/videos"] });
+      }} />;
+    }
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-600" />
+          </div>
+          <h1 className="font-heading text-2xl font-bold text-foreground">Error</h1>
+          <p className="text-muted-foreground text-sm mt-2 mb-6">{error.message}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
   }
 
   return (

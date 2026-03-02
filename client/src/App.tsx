@@ -1,8 +1,8 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { Switch, Route, useLocation } from "wouter";
+import { Helmet } from "@/lib/helmet";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Games from "@/pages/games";
@@ -16,24 +16,26 @@ import GamePreview from "@/pages/game-preview";
 import AdminStories from "@/pages/admin-stories";
 import AdminVideos from "@/pages/admin-videos";
 import AdminGames from "@/pages/admin-games";
-import AdminTeachers from "@/pages/admin-teachers";
 import AdminBanners from "@/pages/admin-banners";
+<<<<<<< HEAD
 import AdminQuestions from "@/pages/admin-questions";
 import BigWhyPage from "@/pages/big-why";
 import TeacherDashboard from "@/pages/teacher-dashboard";
+=======
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 import Marketplace from "@/pages/marketplace";
 import CourseworkDetail from "@/pages/coursework-detail";
 import TeacherProfile from "@/pages/teacher-profile";
 import Leaderboard from "@/pages/leaderboard";
-import VerifyTeacher from "@/pages/verify-teacher";
+import VerifyParent from "@/pages/verify-parent";
 import Register from "@/pages/register";
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
-import SelectRole from "@/pages/select-role";
 import About from "@/pages/about";
 import Contact from "@/pages/contact";
 import { useAuth } from "@/hooks/useAuth";
+import { CanonicalTag } from "@/components/canonical-tag";
 
 function LoadingScreen() {
   return (
@@ -47,35 +49,45 @@ function LoadingScreen() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading, needsRoleSelection } = useAuth();
-
-  if (isLoading) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
+  const isAdminRoute = location.startsWith('/admin');
+  
+  // Show loading screen only if it's NOT an admin route and we are loading auth
+  if (isLoading && !isAdminRoute) {
     return (
       <Switch>
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
-        <Route path="/select-role" component={SelectRole} />
+        <Route path="/verify-parent" component={VerifyParent} />
         <Route component={LoadingScreen} />
       </Switch>
     );
   }
 
-  if (!isAuthenticated) {
-    return (
+  return (
+    <ErrorBoundary>
       <Switch>
+        {/* Admin Routes - Priority */}
+        <Route path="/admin/stories" component={AdminStories} />
+        <Route path="/admin/videos" component={AdminVideos} />
+        <Route path="/admin/games" component={AdminGames} />
+        <Route path="/admin/banners" component={AdminBanners} />
+
+        {/* Auth Routes */}
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/verify-parent" component={VerifyParent} />
+
+        {/* Public Routes */}
         <Route path="/" component={Home} />
-        <Route path="/videos" component={Videos} />
-        <Route path="/games" component={Games} />
-        <Route path="/game/:id" component={GamePreview} />
-        <Route path="/story/:id" component={Story} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
+<<<<<<< HEAD
         <Route path="/admin/stories" component={AdminStories} />
         <Route path="/admin/videos" component={AdminVideos} />
         <Route path="/admin/games" component={AdminGames} />
@@ -87,16 +99,24 @@ function Router() {
       </Switch>
     );
   }
+=======
+        <Route path="/games" component={Games} />
+        <Route path="/game/:id" component={GamePreview} />
+        <Route path="/videos" component={Videos} />
+        <Route path="/video/:id" component={VideoPlayer} />
+        <Route path="/story/:id" component={Story} />
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 
-  if (needsRoleSelection) {
-    return (
-      <Switch>
-        <Route path="/select-role" component={SelectRole} />
-        <Route component={SelectRole} />
-      </Switch>
-    );
-  }
+        {/* Protected Routes - Only match if authenticated */}
+        {isAuthenticated ? <Route path="/r2-video/:key" component={R2VideoPlayer} /> : null}
+        {isAuthenticated ? <Route path="/teachers" component={Teachers} /> : null}
+        {isAuthenticated ? <Route path="/marketplace" component={Marketplace} /> : null}
+        {isAuthenticated ? <Route path="/marketplace/:id" component={CourseworkDetail} /> : null}
+        {isAuthenticated ? <Route path="/teacher/:id" component={TeacherProfile} /> : null}
+        {isAuthenticated ? <Route path="/leaderboard" component={Leaderboard} /> : null}
+        {isAuthenticated ? <Route path="/settings" component={Settings} /> : null}
 
+<<<<<<< HEAD
   return (
     <Switch>
       <Route path="/" component={Home} />
@@ -125,18 +145,30 @@ function Router() {
       <Route path="/big-why" component={BigWhyPage} />
       <Route component={NotFound} />
     </Switch>
+=======
+        {/* Fallback */}
+        <Route component={isAuthenticated ? NotFound : Home} />
+      </Switch>
+    </ErrorBoundary>
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
   );
 }
 
 function App() {
+  // console.log('[SSR] App rendering');
+  
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <TooltipProvider>
+      <CanonicalTag />
+      <Helmet>
+        <title>WhyPals - News for Kids</title>
+      </Helmet>
+      <Toaster />
+      <Router />
+    </TooltipProvider>
   );
 }
+
+
 
 export default App;

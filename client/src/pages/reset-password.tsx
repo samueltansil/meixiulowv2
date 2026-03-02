@@ -13,10 +13,34 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+<<<<<<< HEAD
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
+=======
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    const searchToken = new URLSearchParams(window.location.search).get("token");
+
+    if (!searchToken) {
+      toast({
+        variant: "destructive",
+        title: "Invalid link",
+        description: "Password reset token is missing.",
+      });
+      navigate("/login");
+      return;
+    }
+    setToken(searchToken);
+  }, [navigate, toast]);
+
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     

@@ -28,6 +28,7 @@ import {
   passwordResetTokens,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+<<<<<<< HEAD
   storyViews,
   storyReaderPlays,
   questions,
@@ -36,6 +37,17 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, inArray, not, isNull } from "drizzle-orm";
+=======
+  parentVerificationRequests,
+  type InsertParentVerificationRequest,
+  type ParentVerificationRequest,
+  pollVotes,
+  type PollVote,
+  type InsertPollVote,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, sql, and, isNull } from "drizzle-orm";
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -77,6 +89,7 @@ export interface IStorage {
   createStory(story: InsertStory): Promise<Story>;
   updateStory(id: number, story: Partial<InsertStory>): Promise<Story>;
   deleteStory(id: number): Promise<void>;
+  incrementStoryViews(id: number): Promise<void>;
   
   // Story Games
   getGamesByStoryTitle(storyTitle: string): Promise<StoryGame[]>;
@@ -88,6 +101,10 @@ export interface IStorage {
   updateGame(id: number, game: Partial<InsertStoryGame>): Promise<StoryGame>;
   deleteGame(id: number): Promise<void>;
   
+  // Polls
+  createPollVote(vote: InsertPollVote): Promise<PollVote>;
+  getPollVotes(gameId: number): Promise<PollVote[]>;
+
   // Coursework Marketplace
   getAllCoursework(): Promise<CourseworkItem[]>;
   getPublishedCoursework(): Promise<CourseworkItem[]>;
@@ -129,9 +146,17 @@ export interface IStorage {
   deletePasswordResetToken(id: number): Promise<void>;
   deletePasswordResetTokensByUserId(userId: string): Promise<void>;
 
+<<<<<<< HEAD
   addStoryView(storyId: number, userId?: string): Promise<void>;
   addStoryReaderPlay(storyId: number, userId?: string): Promise<void>;
   getAllStoryStats(excludedEmails: string[]): Promise<{ storyId: number; views: number; reads: number }[]>;
+=======
+  // Parent/Guardian Email Verification
+  createParentVerificationRequest(data: InsertParentVerificationRequest): Promise<ParentVerificationRequest>;
+  getParentVerificationRequestByTokenHash(tokenHash: string): Promise<ParentVerificationRequest | undefined>;
+  getParentVerificationRequestByCodeHash(codeHash: string): Promise<ParentVerificationRequest | undefined>;
+  markParentVerificationAsUsed(id: number, verifiedAt: Date): Promise<ParentVerificationRequest>;
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 }
 
 export class DatabaseStorage implements IStorage {
@@ -184,11 +209,7 @@ export class DatabaseStorage implements IStorage {
     const existingUser = await this.getUser(userId);
     
     if (!existingUser) {
-      const [newUser] = await db
-        .insert(users)
-        .values({ id: userId, points })
-        .returning();
-      return newUser;
+      throw new Error("User not found");
     }
     
     const [user] = await db
@@ -397,6 +418,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(stories).where(eq(stories.id, id));
   }
 
+  async incrementStoryViews(id: number): Promise<void> {
+    await db
+      .update(stories)
+      .set({ views: sql`${stories.views} + 1` })
+      .where(eq(stories.id, id));
+  }
+
   // Story Games
   async getGamesByStoryTitle(storyTitle: string): Promise<StoryGame[]> {
     return await db
@@ -447,6 +475,16 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGame(id: number): Promise<void> {
     await db.delete(storyGames).where(eq(storyGames.id, id));
+  }
+
+  // Polls
+  async createPollVote(vote: InsertPollVote): Promise<PollVote> {
+    const [newVote] = await db.insert(pollVotes).values(vote).returning();
+    return newVote;
+  }
+
+  async getPollVotes(gameId: number): Promise<PollVote[]> {
+    return await db.select().from(pollVotes).where(eq(pollVotes.gameId, gameId));
   }
 
   // Coursework Marketplace
@@ -645,6 +683,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
   }
 
+<<<<<<< HEAD
   async addStoryView(storyId: number, userId?: string): Promise<void> {
     await db.insert(storyViews).values({ storyId, userId });
   }
@@ -714,6 +753,36 @@ export class DatabaseStorage implements IStorage {
 
   async deleteQuestion(id: number): Promise<void> {
     await db.delete(questions).where(eq(questions.id, id));
+=======
+  async createParentVerificationRequest(data: InsertParentVerificationRequest): Promise<ParentVerificationRequest> {
+    const [request] = await db.insert(parentVerificationRequests).values(data).returning();
+    return request;
+  }
+
+  async getParentVerificationRequestByTokenHash(tokenHash: string): Promise<ParentVerificationRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(parentVerificationRequests)
+      .where(and(eq(parentVerificationRequests.tokenHash, tokenHash), isNull(parentVerificationRequests.verifiedAt)));
+    return request;
+  }
+
+  async getParentVerificationRequestByCodeHash(codeHash: string): Promise<ParentVerificationRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(parentVerificationRequests)
+      .where(and(eq(parentVerificationRequests.codeHash, codeHash), isNull(parentVerificationRequests.verifiedAt)));
+    return request;
+  }
+
+  async markParentVerificationAsUsed(id: number, verifiedAt: Date): Promise<ParentVerificationRequest> {
+    const [request] = await db
+      .update(parentVerificationRequests)
+      .set({ verifiedAt })
+      .where(eq(parentVerificationRequests.id, id))
+      .returning();
+    return request;
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
   }
 }
 

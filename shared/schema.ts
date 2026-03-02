@@ -22,6 +22,32 @@ export const sessions = pgTable(
   },
 );
 
+<<<<<<< HEAD
+=======
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  tokenHash: varchar("token_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const parentVerificationRequests = pgTable("parent_verification_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  parentEmail: varchar("parent_email").notNull(),
+  tokenHash: varchar("token_hash").notNull(),
+  codeHash: varchar("code_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  privacyVersion: varchar("privacy_version", { length: 50 }),
+  registrationData: jsonb("registration_data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_parent_verification_token").on(table.tokenHash),
+  index("idx_parent_verification_code").on(table.codeHash),
+]);
+
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -112,6 +138,7 @@ export const stories = pgTable("stories", {
   category: jsonb("category").$type<string[]>().notNull(),
   thumbnail: text("thumbnail").notNull(),
   thumbnailCredit: text("thumbnail_credit"),
+  views: integer("views").default(0).notNull(),
   readTime: varchar("read_time").notNull(),
   isFeatured: boolean("is_featured").default(false).notNull(),
   isPublished: boolean("is_published").default(false).notNull(),
@@ -180,6 +207,7 @@ export const insertR2VideoMetadataSchema = createInsertSchema(r2VideoMetadata).o
 export const insertStorySchema = createInsertSchema(stories).omit({
   createdAt: true,
   updatedAt: true,
+  views: true,
 }).extend({
   category: z.array(z.string()),
 });
@@ -187,6 +215,7 @@ export const insertStorySchema = createInsertSchema(stories).omit({
 export const updateStorySchema = createInsertSchema(stories).omit({
   createdAt: true,
   updatedAt: true,
+  views: true,
 }).partial().extend({
   category: z.array(z.string()).optional(),
 });
@@ -194,7 +223,7 @@ export const updateStorySchema = createInsertSchema(stories).omit({
 // Game templates linked to stories by title for scalability
 export const storyGames = pgTable("story_games", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  gameType: varchar("game_type", { length: 50 }).notNull(), // puzzle, match, quiz, whack, timeline
+  gameType: varchar("game_type", { length: 50 }).notNull(), // puzzle, match, quiz, whack, timeline, poll
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   thumbnail: text("thumbnail"),
@@ -215,8 +244,22 @@ export const storyGames = pgTable("story_games", {
   index("idx_story_games_game_type").on(table.gameType),
 ]);
 
+export const pollVotes = pgTable("poll_votes", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  gameId: integer("game_id").references(() => storyGames.id).notNull(),
+  questionId: varchar("question_id").notNull(),
+  optionIndex: integer("option_index").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_poll_votes_game").on(table.gameId),
+  index("idx_poll_votes_user").on(table.userId),
+]);
+
 export type InsertStoryGame = typeof storyGames.$inferInsert;
 export type StoryGame = typeof storyGames.$inferSelect;
+export type InsertPollVote = typeof pollVotes.$inferInsert;
+export type PollVote = typeof pollVotes.$inferSelect;
 
 export const insertStoryGameSchema = createInsertSchema(storyGames).omit({
   createdAt: true,
@@ -269,6 +312,8 @@ export interface WhackGameConfig {
   holeOuterColor?: string;
   holeInnerColor?: string;
   backgroundImage?: string;
+  holeOuterColor?: string;
+  holeInnerColor?: string;
   duration: number; // seconds
   winMessage?: string;
 }
@@ -280,6 +325,15 @@ export interface TimelineGameConfig {
     description?: string;
     image?: string;
     order: number;
+  }>;
+  winMessage?: string;
+}
+
+export interface PollGameConfig {
+  questions: Array<{
+    id: string;
+    question: string;
+    options: string[];
   }>;
   winMessage?: string;
 }
@@ -387,6 +441,7 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+<<<<<<< HEAD
 
 export const storyViews = pgTable("story_views", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -428,3 +483,7 @@ export const updateQuestionSchema = createInsertSchema(questions).omit({
   storyId: true,
   userId: true,
 }).partial();
+=======
+export type InsertParentVerificationRequest = typeof parentVerificationRequests.$inferInsert;
+export type ParentVerificationRequest = typeof parentVerificationRequests.$inferSelect;
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da

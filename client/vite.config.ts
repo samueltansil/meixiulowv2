@@ -5,8 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-console.log("Vite config loaded, __dirname:", __dirname);
-console.log("Alias @ resolves to:", path.resolve(__dirname, "client", "src"));
+console.log("Client Vite config loaded, __dirname:", __dirname);
 
 export default defineConfig({
   plugins: [
@@ -15,9 +14,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      { find: "@", replacement: path.resolve(__dirname, "client", "src") },
-      { find: "@shared", replacement: path.resolve(__dirname, "shared") },
-      { find: "@assets", replacement: path.resolve(__dirname, "attached_assets") },
+      { find: "@", replacement: path.resolve(__dirname, "src") },
+      { find: "@shared", replacement: path.resolve(__dirname, "../shared") },
+      { find: "@assets", replacement: path.resolve(__dirname, "../attached_assets") },
     ],
   },
   css: {
@@ -25,9 +24,9 @@ export default defineConfig({
       plugins: [],
     },
   },
-  root: path.resolve(__dirname, "client"),
+  root: __dirname,
   build: {
-    outDir: path.resolve(__dirname, "client", "dist"),
+    outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
     ssrManifest: true,
   },

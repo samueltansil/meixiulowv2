@@ -4,7 +4,7 @@ import { randomBytes, createHash } from "crypto";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
-import { sendPasswordResetEmail } from "./email";
+import { sendPasswordResetEmail, sendParentVerificationEmail } from "./email";
 import { 
   insertVideoSchema, 
   updateVideoSchema, 
@@ -29,6 +29,7 @@ import { listVideos, getVideoSignedUrl, getImageUploadUrl, getImageSignedUrl, up
 import multer from "multer";
 
 const BCRYPT_ROUNDS = 12;
+const PRIVACY_POLICY_VERSION = "2026-01-04";
 
 const MURF_API_KEY = process.env.MURF_API_KEY;
 const MURF_VOICE_ID = process.env.MURF_VOICE_ID || "en-US-natalie";
@@ -44,14 +45,52 @@ function generateAdminToken(): string {
   return randomBytes(32).toString('hex');
 }
 
-function isValidAdminSession(req: any): boolean {
+async function isValidAdminSession(req: any): Promise<boolean> {
+  console.log('[AuthDebug] isValidAdminSession called');
+  // If we have an active user session, check if they are an admin
+  if (req.session?.userId) {
+    console.log('[AuthDebug] User session found:', req.session.userId);
+    try {
+      const user = await storage.getUser(req.session.userId);
+      const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com", "meixiu.low@gmail.com"];
+      if (user) {
+         console.log('[AuthDebug] User found:', user.email);
+         if (user.email && ALLOWED_ADMIN_EMAILS.includes(user.email)) {
+           console.log('[AuthDebug] User is admin');
+           return true;
+         } else {
+           console.log('[AuthDebug] User is NOT admin');
+         }
+      } else {
+        console.log('[AuthDebug] User not found in DB');
+      }
+    } catch (e) {
+      console.error("Error verifying admin user session:", e);
+    }
+  } else {
+    console.log('[AuthDebug] No user session found');
+  }
+
+  // Fallback to token-based auth (for backward compatibility or if session is missing but cookie exists)
+  // Note: This is fragile if server restarts, so session-based is preferred.
   const token = req.headers['x-admin-token'] || req.cookies?.adminToken;
-  if (!token) return false;
+  console.log('[AuthDebug] Checking admin session. Token present:', !!token);
+  
+  if (!token) {
+    // console.log('[AuthDebug] No admin token found in headers or cookies');
+    return false;
+  }
   
   const session = adminSessions.get(token);
-  if (!session) return false;
+  console.log('[AuthDebug] Token:', token.substring(0, 10) + '...', 'Session found:', !!session);
+  
+  if (!session) {
+    console.log('[AuthDebug] Session not found in memory map');
+    return false;
+  }
   
   if (Date.now() > session.expiresAt) {
+    console.log('[AuthDebug] Session expired');
     adminSessions.delete(token);
     return false;
   }
@@ -98,17 +137,6 @@ export async function registerRoutes(
 
   app.post('/api/admin/login', async (req: any, res) => {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Please log in to your account first" });
-      }
-
-      const user = await storage.getUser(req.session.userId);
-      const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com", "meixiu.low@gmail.com"];
-      
-      if (!user || !user.email || !ALLOWED_ADMIN_EMAILS.includes(user.email)) {
-        return res.status(403).json({ message: "Access denied: Unauthorized account" });
-      }
-
       const { password } = req.body;
       if (!password) {
         return res.status(400).json({ message: "Password is required" });
@@ -116,6 +144,15 @@ export async function registerRoutes(
       if (password === ADMIN_PASSWORD) {
         const token = generateAdminToken();
         adminSessions.set(token, { expiresAt: Date.now() + ADMIN_SESSION_EXPIRY });
+        
+        res.cookie('adminToken', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: ADMIN_SESSION_EXPIRY,
+          path: '/'
+        });
+
         return res.json({ success: true, token });
       }
       return res.status(401).json({ message: "Invalid password" });
@@ -126,46 +163,25 @@ export async function registerRoutes(
   });
 
   app.get('/api/admin/session', async (req: any, res) => {
-    if (isValidAdminSession(req)) {
+    if (await isValidAdminSession(req)) {
       return res.json({ valid: true });
     }
     return res.status(401).json({ valid: false, message: "Session expired or invalid" });
   });
 
-  // Admin: Get pending teacher verification requests
+  // Admin: Teacher verification endpoints disabled
   app.get('/api/admin/teacher-verifications', async (req: any, res) => {
-    if (!isValidAdminSession(req)) {
+    if (!await isValidAdminSession(req)) {
       return res.status(401).json({ message: "Admin authentication required" });
     }
-    try {
-      const pendingTeachers = await storage.getPendingVerificationRequests();
-      res.json(pendingTeachers.map(t => ({ ...t, passwordHash: undefined })));
-    } catch (error) {
-      console.error("Error fetching pending verifications:", error);
-      res.status(500).json({ message: "Failed to fetch pending verifications" });
-    }
+    return res.status(200).json([]);
   });
 
-  // Admin: Approve or reject teacher verification
   app.post('/api/admin/teacher-verifications/:userId', async (req: any, res) => {
-    if (!isValidAdminSession(req)) {
+    if (!await isValidAdminSession(req)) {
       return res.status(401).json({ message: "Admin authentication required" });
     }
-    try {
-      const { userId } = req.params;
-      const { action } = req.body;
-      
-      if (!action || !['approve', 'reject'].includes(action)) {
-        return res.status(400).json({ message: "Action must be 'approve' or 'reject'" });
-      }
-      
-      const status = action === 'approve' ? 'verified' : 'rejected';
-      const user = await storage.updateTeacherVerificationStatus(userId, status);
-      res.json({ success: true, user: { ...user, passwordHash: undefined } });
-    } catch (error) {
-      console.error("Error updating verification status:", error);
-      res.status(500).json({ message: "Failed to update verification status" });
-    }
+    return res.status(400).json({ message: "Teacher verification is disabled" });
   });
 
   // Email/Password Auth Endpoints
@@ -249,10 +265,10 @@ export async function registerRoutes(
 
   app.post('/api/auth/register', async (req: any, res) => {
     try {
-      const { email, password, confirmPassword, firstName, lastName, agreedToTerms } = req.body;
+      const { email, parentEmail, password, confirmPassword, firstName, lastName, agreedToTerms } = req.body;
       
-      if (!email || !password || !confirmPassword) {
-        return res.status(400).json({ message: "Email, password, and password confirmation are required" });
+      if (!email || !parentEmail || !password || !confirmPassword) {
+        return res.status(400).json({ message: "Email, parent or guardian email, password, and password confirmation are required" });
       }
       
       if (password !== confirmPassword) {
@@ -267,6 +283,10 @@ export async function registerRoutes(
       if (!emailRegex.test(email)) {
         return res.status(400).json({ message: "Please enter a valid email address" });
       }
+
+      if (!emailRegex.test(parentEmail)) {
+        return res.status(400).json({ message: "Please enter a valid parent or guardian email address" });
+      }
       
       if (!agreedToTerms) {
         return res.status(400).json({ message: "You must agree to the Terms of Service and Privacy Policy" });
@@ -278,34 +298,107 @@ export async function registerRoutes(
       }
       
       const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-      
-      const user = await storage.upsertUser({
+
+      const token = randomBytes(32).toString('hex');
+      const code = (Math.floor(100000 + Math.random() * 900000)).toString();
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const codeHash = createHash('sha256').update(code).digest('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const registrationData = {
         email: email.toLowerCase(),
         passwordHash,
         firstName: firstName || null,
         lastName: lastName || null,
-        userRole: null,
         agreedToTerms: true,
         agreedToTermsAt: new Date(),
+      };
+
+      await storage.createParentVerificationRequest({
+        parentEmail: parentEmail.toLowerCase(),
+        tokenHash,
+        codeHash,
+        expiresAt,
+        privacyVersion: PRIVACY_POLICY_VERSION,
+        registrationData,
       });
-      
-      req.session.userId = user.id;
-      req.session.authType = 'email';
-      
-      req.session.save((err: any) => {
-        if (err) {
-          console.error("Error saving session:", err);
-          return res.status(500).json({ message: "Registration failed" });
-        }
-        res.status(201).json({ 
-          success: true, 
-          user: { ...user, passwordHash: undefined },
-          needsRoleSelection: !user.userRole
-        });
+
+      const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+      await sendParentVerificationEmail(parentEmail, code, token, origin);
+
+      res.status(201).json({
+        success: true,
+        message: "Parent or guardian verification email sent.",
       });
     } catch (error) {
-      console.error("Error registering user:", error);
+      console.error("Error starting registration:", error);
       res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  app.post('/api/auth/verify-parent', async (req: any, res) => {
+    try {
+      const { token, code } = req.body as { token?: string; code?: string };
+
+      if (!token && !code) {
+        return res.status(400).json({ message: "Verification token or code is required" });
+      }
+
+      const now = new Date();
+
+      let request = null;
+      if (token) {
+        const tokenHash = createHash('sha256').update(token).digest('hex');
+        request = await storage.getParentVerificationRequestByTokenHash(tokenHash);
+      } else if (code) {
+        const codeHash = createHash('sha256').update(code).digest('hex');
+        request = await storage.getParentVerificationRequestByCodeHash(codeHash);
+      }
+
+      if (!request) {
+        return res.status(400).json({ message: "Invalid or expired verification" });
+      }
+
+      if (now > request.expiresAt) {
+        return res.status(400).json({ message: "Verification has expired" });
+      }
+
+      const data = request.registrationData as {
+        email: string;
+        passwordHash: string;
+        firstName: string | null;
+        lastName: string | null;
+        agreedToTerms: boolean;
+        agreedToTermsAt: string | Date | null;
+      };
+
+      const existingUser = await storage.getUserByEmail(data.email);
+      let user = existingUser;
+
+      if (!user) {
+        const agreedAt = data.agreedToTermsAt ? new Date(data.agreedToTermsAt) : new Date();
+
+        user = await storage.upsertUser({
+          email: data.email.toLowerCase(),
+          passwordHash: data.passwordHash,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          userRole: null,
+          agreedToTerms: true,
+          agreedToTermsAt: agreedAt,
+          emailVerified: true,
+        });
+      }
+
+      await storage.markParentVerificationAsUsed(request.id, now);
+
+      res.json({
+        success: true,
+        message: "Parent or guardian email verified. You can now log in.",
+      });
+    } catch (error) {
+      console.error("Error verifying parent email:", error);
+      res.status(500).json({ message: "Verification failed" });
     }
   });
 
@@ -321,7 +414,11 @@ export async function registerRoutes(
       if (!user || !user.passwordHash) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
-      
+
+      if (!user.emailVerified) {
+        return res.status(401).json({ message: "Your account has not been approved by email yet. Please ask your parent or guardian to check their email." });
+      }
+
       const validPassword = await bcrypt.compare(password, user.passwordHash);
       if (!validPassword) {
         return res.status(401).json({ message: "Invalid email or password" });
@@ -379,67 +476,11 @@ export async function registerRoutes(
   });
 
   app.patch('/api/auth/role', async (req: any, res) => {
-    try {
-      const userId = getUserIdFromRequest(req);
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const { role } = req.body;
-      if (!role || !['teacher', 'student'].includes(role)) {
-        return res.status(400).json({ message: "Role must be 'teacher' or 'student'" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      if (user.userRole) {
-        return res.status(400).json({ message: "Role has already been set" });
-      }
-      
-      const updatedUser = await storage.updateUserRole(userId, role);
-      res.json({ 
-        success: true, 
-        user: { ...updatedUser, passwordHash: undefined }
-      });
-    } catch (error) {
-      console.error("Error setting role:", error);
-      res.status(500).json({ message: "Failed to set role" });
-    }
+    return res.status(400).json({ message: "Account roles are no longer supported" });
   });
 
   app.post('/api/auth/request-verification', async (req: any, res) => {
-    try {
-      const userId = getUserIdFromRequest(req);
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      if (user.userRole !== 'teacher') {
-        return res.status(400).json({ message: "Only teachers can request verification" });
-      }
-      
-      if (user.teacherVerificationStatus === 'verified') {
-        return res.status(400).json({ message: "You are already verified" });
-      }
-      
-      const updatedUser = await storage.requestTeacherVerification(userId);
-      res.json({ 
-        success: true, 
-        user: { ...updatedUser, passwordHash: undefined },
-        message: "Verification request submitted. Our team will review your profile."
-      });
-    } catch (error) {
-      console.error("Error requesting verification:", error);
-      res.status(500).json({ message: "Failed to request verification" });
-    }
+    return res.status(400).json({ message: "Teacher verification is disabled" });
   });
 
   app.get('/api/auth/me', async (req: any, res) => {
@@ -735,17 +776,21 @@ export async function registerRoutes(
   app.get('/api/stories/:id', async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      let story;
+
       if (isNaN(id)) {
-        const story = await storage.getStoryBySlug(req.params.id);
-        if (!story) {
-          return res.status(404).json({ message: "Story not found" });
-        }
-        return res.json(story);
+        story = await storage.getStoryBySlug(req.params.id);
+      } else {
+        story = await storage.getStoryById(id);
       }
-      const story = await storage.getStoryById(id);
+
       if (!story) {
         return res.status(404).json({ message: "Story not found" });
       }
+
+      // Increment views
+      await storage.incrementStoryViews(story.id);
+
       res.json(story);
     } catch (error) {
       console.error("Error fetching story:", error);
@@ -843,7 +888,7 @@ export async function registerRoutes(
   // Image upload for game images - admin only
   app.post('/api/admin/upload/game-image', upload.single('image'), async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -870,7 +915,7 @@ export async function registerRoutes(
   // Image upload for story content images - admin only
   app.post('/api/admin/upload/story-content-image', upload.single('image'), async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -897,7 +942,7 @@ export async function registerRoutes(
   // Image upload for video thumbnails - admin only
   app.post('/api/admin/upload/video-thumbnail', upload.single('image'), async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -924,7 +969,7 @@ export async function registerRoutes(
   // Image upload for banners - admin only
   app.post('/api/admin/upload/banner', upload.single('image'), async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
+      if (!await isValidAdminSession(req)) return res.status(403).json({ message: "Admin access required" });
       if (!req.file) return res.status(400).json({ message: "No image file provided" });
       const { key } = await uploadImageToR2(req.file.buffer, req.file.originalname, req.file.mimetype, 'banners');
       const imageUrl = `/api/images/${key}`;
@@ -1016,7 +1061,7 @@ export async function registerRoutes(
   // Story routes - admin only
   app.get('/api/admin/stories', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
       const stories = await storage.getAllStories();
@@ -1053,7 +1098,7 @@ export async function registerRoutes(
 
   app.put('/api/admin/stories/:id', async (req: any, res) => {
     try {
-      if (!isValidAdminSession(req)) {
+      if (!await isValidAdminSession(req)) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -1408,6 +1453,48 @@ export async function registerRoutes(
     }
   });
 
+  // Poll Routes
+  app.post('/api/games/:id/vote', async (req: any, res) => {
+    try {
+      const gameId = parseInt(req.params.id);
+      const { questionId, optionIndex } = req.body;
+      
+      const vote = await storage.createPollVote({
+        gameId,
+        questionId,
+        optionIndex,
+        userId: req.session.userId || null,
+      });
+      
+      res.json(vote);
+    } catch (error) {
+      console.error("Error submitting vote:", error);
+      res.status(500).json({ message: "Failed to submit vote" });
+    }
+  });
+
+  app.get('/api/games/:id/results', async (req: any, res) => {
+    try {
+      const gameId = parseInt(req.params.id);
+      const votes = await storage.getPollVotes(gameId);
+
+      // Aggregate results
+      const results: Record<string, Record<number, number>> = {};
+      
+      votes.forEach(vote => {
+        if (!results[vote.questionId]) {
+          results[vote.questionId] = {};
+        }
+        results[vote.questionId][vote.optionIndex] = (results[vote.questionId][vote.optionIndex] || 0) + 1;
+      });
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching poll results:", error);
+      res.status(500).json({ message: "Failed to fetch poll results" });
+    }
+  });
+
   app.post('/api/admin/generate-audio', async (req: any, res) => {
     try {
       if (!isValidAdminSession(req)) {
@@ -1636,37 +1723,7 @@ export async function registerRoutes(
 
   // User role change (supports both auth methods)
   app.post('/api/user/role', async (req: any, res) => {
-    try {
-      // Support session-based authentication
-      const userId = getUserIdFromRequest(req);
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const { role } = req.body;
-      if (!role || !['teacher', 'student'].includes(role)) {
-        return res.status(400).json({ message: "Role must be 'teacher' or 'student'" });
-      }
-      
-      const currentUser = await storage.getUser(userId);
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // If changing to teacher, reset verification status
-      if (role === 'teacher' && currentUser.userRole !== 'teacher') {
-        await storage.updateUserRole(userId, role);
-        await storage.updateTeacherVerificationStatus(userId, 'unverified');
-        const updatedUser = await storage.getUser(userId);
-        res.json({ ...updatedUser, passwordHash: undefined });
-      } else {
-        const user = await storage.updateUserRole(userId, role);
-        res.json({ ...user, passwordHash: undefined });
-      }
-    } catch (error) {
-      console.error("Error setting user role:", error);
-      res.status(500).json({ message: "Failed to set role" });
-    }
+    return res.status(400).json({ message: "Account roles are no longer supported" });
   });
 
   // User profile update (supports both auth methods)

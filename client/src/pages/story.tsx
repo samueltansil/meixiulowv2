@@ -9,9 +9,16 @@ import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
 import { useMemo, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+<<<<<<< HEAD
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Story, StoryGame, Video } from "@shared/schema";
+=======
+import { useQuery } from "@tanstack/react-query";
+import type { Story, StoryGame, Video, PollGameConfig } from "@shared/schema";
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 import { format } from "date-fns";
+import { Helmet } from "@/lib/helmet";
+import PollGame from "@/components/games/PollGame";
 
 const IMAGE_TAG_REGEX = /\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]/g;
 const FULL_IMAGE_TAG_REGEX = /^\[IMAGE:([^\]|]+)(?:\|([^\]]*))?\]$/;
@@ -351,6 +358,14 @@ export default function StoryPage() {
 
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
+      <Helmet>
+        <title>{article.title} - WhyPals</title>
+        <meta name="description" content={article.excerpt || article.content.substring(0, 160)} />
+        <meta property="og:title" content={article.title} />
+        <meta property="og:description" content={article.excerpt || article.content.substring(0, 160)} />
+        <meta property="og:image" content={article.thumbnail} />
+        <meta property="og:type" content="article" />
+      </Helmet>
       <nav className="p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 font-heading text-2xl font-bold text-primary hover:opacity-80 transition-opacity">
@@ -529,15 +544,27 @@ export default function StoryPage() {
             })}
           </div>
 
-          <div className="mt-12 pt-8 border-t border-border">
-            <h3 className="font-heading text-xl font-bold mb-4">Did you enjoy this story?</h3>
-            <div className="flex gap-4">
-              <Button className="rounded-full" data-testid="button-like">I loved it!</Button>
-              <Link href="/">
-                <Button variant="outline" className="rounded-full" data-testid="button-more-stories">Read more stories</Button>
-              </Link>
+          {relatedGame && relatedGame.gameType === 'poll' ? (
+            <div className="mt-12 pt-8 border-t border-border">
+              <h3 className="font-heading text-xl font-bold mb-4">{relatedGame.title}</h3>
+              <PollGame 
+                gameId={relatedGame.id}
+                config={relatedGame.config as PollGameConfig}
+                onComplete={() => {}}
+                pointsReward={0}
+              />
             </div>
-          </div>
+          ) : (
+            <div className="mt-12 pt-8 border-t border-border">
+              <h3 className="font-heading text-xl font-bold mb-4">Did you enjoy this story?</h3>
+              <div className="flex gap-4">
+                <Button className="rounded-full" data-testid="button-like">I loved it!</Button>
+                <Link href="/">
+                  <Button variant="outline" className="rounded-full" data-testid="button-more-stories">Read more stories</Button>
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Related Video Section */}
           {relatedVideo && (
@@ -583,7 +610,7 @@ export default function StoryPage() {
 
 
           {/* Related Game Section */}
-          {relatedGame && (
+          {relatedGame && relatedGame.gameType !== 'poll' && (
             <div className="mt-8 p-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-900/20 dark:via-teal-900/20 dark:to-emerald-900/20 rounded-3xl border-2 border-emerald-200 dark:border-emerald-800 shadow-lg">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-800 flex items-center justify-center">

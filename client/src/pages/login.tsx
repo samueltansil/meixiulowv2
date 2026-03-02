@@ -9,21 +9,28 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import logo from "@assets/whypals-logo.png";
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
+import { Helmet } from "@/lib/helmet";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoggingIn, isAuthenticated, needsRoleSelection } = useAuth();
+  const [redirectParam, setRedirectParam] = useState<string | null>(null);
+  const { login, isLoggingIn, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const redirectParam = new URLSearchParams(window.location.search).get("redirect") || null;
+
+  useEffect(() => {
+    const search = window.location.search;
+    const param = new URLSearchParams(search).get("redirect");
+    setRedirectParam(param);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(needsRoleSelection ? "/select-role" : (redirectParam || "/"));
+      navigate(redirectParam || "/");
     }
-  }, [isAuthenticated, needsRoleSelection, navigate, redirectParam]);
+  }, [isAuthenticated, navigate, redirectParam]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,23 +42,23 @@ export default function Login() {
           title: "Welcome back!",
           description: "You've successfully logged in.",
         });
-        if (result.needsRoleSelection) {
-          navigate("/select-role");
-        } else {
-          navigate(redirectParam || "/");
-        }
+        navigate(redirectParam || "/");
       }
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: error.message || "Invalid email or password.",
+        description: error.message || "Invalid email or password, or your account has not been approved by email yet.",
       });
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4 relative">
+      <Helmet>
+        <title>Login - WhyPals</title>
+        <meta name="description" content="Log in to your WhyPals account to access educational news, games, and stories for kids." />
+      </Helmet>
       <div className="absolute top-4 left-4">
         <Link href="/">
           <Button variant="ghost" size="sm" className="gap-2">
@@ -119,10 +126,15 @@ export default function Login() {
                   </button>
                 </div>
                 <div className="flex justify-end">
+<<<<<<< HEAD
                   <Link href="/forgot-password">
                     <span className="text-xs text-primary hover:underline cursor-pointer">
                       Forgot password?
                     </span>
+=======
+                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                    Forgot password?
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
                   </Link>
                 </div>
               </div>

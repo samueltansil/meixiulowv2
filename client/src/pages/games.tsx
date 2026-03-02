@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { StoryGame, Banner } from "@shared/schema";
 import ProfileButton from "@/components/ProfileButton";
 import playPlaceholder from "@/assets/play-placeholder.png";
+import { Helmet } from "@/lib/helmet";
 
 const GAME_TYPE_ICONS: Record<string, typeof Puzzle> = {
   puzzle: Puzzle,
@@ -65,7 +66,9 @@ export default function Games() {
   });
 
   const allFeaturedItems = [
-    ...featuredGames.map(g => ({ type: 'game' as const, data: g })),
+    ...featuredGames
+      .filter(g => g.gameType !== 'poll')
+      .map(g => ({ type: 'game' as const, data: g })),
     ...banners.map(b => ({ type: 'banner' as const, data: b }))
   ];
 
@@ -106,11 +109,16 @@ export default function Games() {
     const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     game.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === "All" || (Array.isArray(game.category) && game.category.includes(activeCategory));
-    return matchesSearch && matchesCategory;
+    const isNotPoll = game.gameType !== 'poll';
+    return matchesSearch && matchesCategory && isNotPoll;
   });
 
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
+      <Helmet>
+        <title>Educational Games for Kids - WhyPals</title>
+        <meta name="description" content="Play fun educational games for kids! Puzzles, quizzes, and matching games to learn about history, science, and current events." />
+      </Helmet>
       <nav className="p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 font-heading text-2xl font-bold text-primary hover:opacity-80 transition-opacity">

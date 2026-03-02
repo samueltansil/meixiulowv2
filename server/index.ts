@@ -1,10 +1,16 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
 import { createServer } from "http";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { storage } from "./storage";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.use(cookieParser());
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -63,6 +69,66 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
+  app.get("/sitemap.xml", async (req, res) => {
+    try {
+      const stories = await storage.getPublishedStories();
+      const games = await storage.getAllGames();
+
+      const baseUrl = "https://whypals.com";
+
+      const staticRoutes = [
+        { url: "/", priority: 1.0 },
+        { url: "/login", priority: 0.9 },
+        { url: "/games", priority: 0.9 },
+        { url: "/about", priority: 0.7 },
+        { url: "/contact", priority: 0.6 }
+      ];
+
+      let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+      // Static routes
+      staticRoutes.forEach(route => {
+        sitemap += `
+  <url>
+    <loc>${baseUrl}${route.url}</loc>
+    <changefreq>daily</changefreq>
+    <priority>${route.priority}</priority>
+  </url>`;
+      });
+
+      // Stories
+      stories.forEach(story => {
+        sitemap += `
+  <url>
+    <loc>${baseUrl}/story/${story.id}</loc>
+    <lastmod>${new Date(story.updatedAt || story.publishedAt || Date.now()).toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+      });
+
+      // Games
+      games.forEach(game => {
+        sitemap += `
+  <url>
+    <loc>${baseUrl}/game/${game.id}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>`;
+      });
+
+      sitemap += `
+</urlset>`;
+
+      res.header("Content-Type", "application/xml");
+      res.send(sitemap);
+    } catch (error) {
+      console.error("Sitemap generation error:", error);
+      res.status(500).send("Error generating sitemap");
+    }
+  });
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -71,16 +137,95 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // Serve static files from client/dist
-  // In development, run with: npm run dev (uses tsx + vite dev server)
-  // In production, run with: npm run start (serves pre-built static files)
-  serveStatic(app);
+  const isProduction = process.env.NODE_ENV === "production";
+  const root = process.cwd();
 
+  if (!isProduction) {
+    const vite = await import("vite").then((m) =>
+      m.createServer({
+        server: { middlewareMode: true },
+        appType: "custom",
+        configFile: path.resolve(root, "client/vite.config.ts"),
+      })
+    );
+    app.use(vite.middlewares);
+
+    app.use("*", async (req, res, next) => {
+      try {
+        const url = req.originalUrl;
+        let template = fs.readFileSync(path.resolve(root, "client/index.html"), "utf-8");
+        template = await vite.transformIndexHtml(url, template);
+        const { render } = await vite.ssrLoadModule("/src/entry-server.tsx");
+        const { html, dehydratedState, helmet } = await render(url);
+        console.log("Helmet title:", helmet?.title?.toString());
+        const helmetHead = `
+          ${helmet.title.toString()}
+          ${helmet.meta.toString()}
+          ${helmet.link.toString()}
+          ${helmet.script.toString()}
+        `;
+        console.log("Helmet head injected length:", helmetHead.length);
+        const appHtml = template.replace(`<!--app-html-->`, html)
+                                .replace(`<!--app-head-->`, helmetHead)
+                                .replace(
+                                  `<!--app-state-->`,
+                                  `<script>window.__REACT_QUERY_STATE__ = ${JSON.stringify(dehydratedState)}</script>`
+                                );
+        res.status(200).set({ "Content-Type": "text/html" }).end(appHtml);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
+  } else {
+    // Production SSR
+    const dist = path.resolve(root, "client/dist");
+    if (fs.existsSync(dist)) {
+      app.use(express.static(dist, { index: false }));
+      
+      app.use("*", async (req, res, next) => {
+        try {
+          const url = req.originalUrl;
+          const template = fs.readFileSync(path.resolve(dist, "index.html"), "utf-8");
+          
+          // Load the server entry built by Vite
+          const serverEntryPath = path.resolve(dist, "server/entry-server.js");
+          const { render } = await import(serverEntryPath);
+          
+          const { html, dehydratedState, helmet } = await render(url);
+          
+          const helmetHead = `
+            ${helmet.title.toString()}
+            ${helmet.meta.toString()}
+            ${helmet.link.toString()}
+            ${helmet.script.toString()}
+          `;
+          
+          const appHtml = template.replace(`<!--app-html-->`, html)
+                                  .replace(`<!--app-head-->`, helmetHead)
+                                  .replace(
+                                    `<!--app-state-->`,
+                                    `<script>window.__REACT_QUERY_STATE__ = ${JSON.stringify(dehydratedState)}</script>`
+                                  );
+          
+          res.status(200).set({ "Content-Type": "text/html" }).end(appHtml);
+        } catch (e) {
+          console.error("SSR Error:", e);
+          next(e);
+        }
+      });
+    }
+  }
+
+<<<<<<< HEAD
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "3000", 10);
+=======
+  const port = parseInt(process.env.PORT || "5000", 10);
+>>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
   httpServer.listen(
     {
       port,

@@ -5,7 +5,11 @@ import { apiRequest, getQueryFn } from "@/lib/queryClient";
 interface AuthResponse {
   success: boolean;
   user: User;
-  needsRoleSelection?: boolean;
+  message?: string;
+}
+
+interface RegistrationStartResponse {
+  success: boolean;
   message?: string;
 }
 
@@ -21,13 +25,11 @@ export function useAuth() {
   const currentUser = user || null;
 
   const registerMutation = useMutation({
-    mutationFn: async (data: { email: string; password: string; confirmPassword: string; firstName?: string; lastName?: string; agreedToTerms?: boolean }) => {
+    mutationFn: async (data: { email: string; parentEmail: string; password: string; confirmPassword: string; firstName?: string; lastName?: string; agreedToTerms?: boolean }) => {
       const response = await apiRequest("POST", "/api/auth/register", data);
-      return response.json() as Promise<AuthResponse>;
+      return response.json() as Promise<RegistrationStartResponse>;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"], exact: true });
-    },
+    onSuccess: () => {},
   });
 
   const loginMutation = useMutation({
@@ -75,7 +77,6 @@ export function useAuth() {
     user: currentUser,
     isLoading,
     isAuthenticated: !!currentUser,
-    needsRoleSelection: currentUser && !currentUser.userRole,
     register: registerMutation.mutateAsync,
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,

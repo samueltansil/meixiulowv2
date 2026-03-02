@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -6,7 +6,6 @@ import { Shield, Check, X, User, Calendar, Mail, Clock, ArrowLeft, GraduationCap
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType } from "@shared/schema";
 import {
   AlertDialog,
@@ -19,44 +18,36 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+async function validateSession(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/admin/session", { credentials: "include" });
+    if (res.ok) {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 export default function AdminTeachers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [adminToken, setAdminToken] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [selectedTeacher, setSelectedTeacher] = useState<UserType | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('adminToken');
-    if (storedToken) {
-      setAdminToken(storedToken);
-      fetch('/api/admin/session', {
-        headers: { 'x-admin-token': storedToken }
-      }).then(res => {
-        if (res.ok) {
-          setIsLoggedIn(true);
-        } else {
-          localStorage.removeItem('adminToken');
-          setAdminToken('');
-        }
-        setIsCheckingSession(false);
-      }).catch(() => {
-        setIsCheckingSession(false);
-      });
-    } else {
-      setIsCheckingSession(false);
-    }
-  }, []);
+  const { data: isSessionValid, isLoading: isCheckingSession } = useQuery({
+    queryKey: ["adminSession"],
+    queryFn: validateSession,
+    retry: false,
+    staleTime: 0
+  });
+
+  const isLoggedIn = !!isSessionValid;
 
   const { data: pendingTeachers, isLoading } = useQuery<UserType[]>({
     queryKey: ['/api/admin/teacher-verifications'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/teacher-verifications', {
-        headers: { 'x-admin-token': adminToken }
-      });
+      const res = await fetch('/api/admin/teacher-verifications');
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     },
@@ -69,9 +60,7 @@ export default function AdminTeachers() {
       return res.json();
     },
     onSuccess: (data: any) => {
-      localStorage.setItem('adminToken', data.token);
-      setAdminToken(data.token);
-      setIsLoggedIn(true);
+      queryClient.invalidateQueries({ queryKey: ["adminSession"] });
       toast({ title: "Success", description: "Logged in successfully" });
     },
     onError: () => {
@@ -85,9 +74,9 @@ export default function AdminTeachers() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-admin-token': adminToken 
         },
         body: JSON.stringify({ action }),
+        credentials: "include",
       });
       if (!res.ok) throw new Error('Failed to update');
       return res.json();
