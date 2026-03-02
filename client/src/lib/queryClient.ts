@@ -28,7 +28,7 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
+  async ({ queryKey, signal }) => {
     // For SSR, if we are on the server, we need to handle full URLs or inject base URL
     let url = queryKey.join("/") as string;
     
@@ -42,11 +42,10 @@ export const getQueryFn: <T>(options: {
 
     const res = await fetch(url, {
       credentials: "include",
-      headers,
       signal,
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+    if (res.status === 401 && unauthorizedBehavior === "returnNull") {
       return null;
     }
 
