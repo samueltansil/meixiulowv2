@@ -27,10 +27,12 @@ import logo from "@/assets/whypals-logo.png";
 const ADMIN_TOKEN_KEY = 'whypals_admin_token';
 
 function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
   return sessionStorage.getItem(ADMIN_TOKEN_KEY);
 }
 
 function setStoredToken(token: string): void {
+  if (typeof window === "undefined") return;
   sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
 }
 
