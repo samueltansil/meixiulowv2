@@ -28,16 +28,11 @@ import {
   passwordResetTokens,
   type PasswordResetToken,
   type InsertPasswordResetToken,
-<<<<<<< HEAD
   storyViews,
   storyReaderPlays,
   questions,
   type Question,
   type InsertQuestion,
-} from "@shared/schema";
-import { db } from "./db";
-import { eq, desc, sql, and, or, inArray, not, isNull } from "drizzle-orm";
-=======
   parentVerificationRequests,
   type InsertParentVerificationRequest,
   type ParentVerificationRequest,
@@ -46,8 +41,7 @@ import { eq, desc, sql, and, or, inArray, not, isNull } from "drizzle-orm";
   type InsertPollVote,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, isNull } from "drizzle-orm";
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
+import { eq, desc, sql, and, or, inArray, not, isNull } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -146,17 +140,15 @@ export interface IStorage {
   deletePasswordResetToken(id: number): Promise<void>;
   deletePasswordResetTokensByUserId(userId: string): Promise<void>;
 
-<<<<<<< HEAD
   addStoryView(storyId: number, userId?: string): Promise<void>;
   addStoryReaderPlay(storyId: number, userId?: string): Promise<void>;
   getAllStoryStats(excludedEmails: string[]): Promise<{ storyId: number; views: number; reads: number }[]>;
-=======
+
   // Parent/Guardian Email Verification
   createParentVerificationRequest(data: InsertParentVerificationRequest): Promise<ParentVerificationRequest>;
   getParentVerificationRequestByTokenHash(tokenHash: string): Promise<ParentVerificationRequest | undefined>;
   getParentVerificationRequestByCodeHash(codeHash: string): Promise<ParentVerificationRequest | undefined>;
   markParentVerificationAsUsed(id: number, verifiedAt: Date): Promise<ParentVerificationRequest>;
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 }
 
 export class DatabaseStorage implements IStorage {
@@ -683,7 +675,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
   }
 
-<<<<<<< HEAD
   async addStoryView(storyId: number, userId?: string): Promise<void> {
     await db.insert(storyViews).values({ storyId, userId });
   }
@@ -753,7 +744,8 @@ export class DatabaseStorage implements IStorage {
 
   async deleteQuestion(id: number): Promise<void> {
     await db.delete(questions).where(eq(questions.id, id));
-=======
+  }
+
   async createParentVerificationRequest(data: InsertParentVerificationRequest): Promise<ParentVerificationRequest> {
     const [request] = await db.insert(parentVerificationRequests).values(data).returning();
     return request;
@@ -782,7 +774,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(parentVerificationRequests.id, id))
       .returning();
     return request;
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
   }
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -13,14 +13,7 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-<<<<<<< HEAD
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-  const [, navigate] = useLocation();
-
-=======
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -39,8 +32,6 @@ export default function ResetPassword() {
     }
     setToken(searchToken);
   }, [navigate, toast]);
-
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     

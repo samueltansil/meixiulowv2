@@ -126,15 +126,8 @@ export default function Login() {
                   </button>
                 </div>
                 <div className="flex justify-end">
-<<<<<<< HEAD
-                  <Link href="/forgot-password">
-                    <span className="text-xs text-primary hover:underline cursor-pointer">
-                      Forgot password?
-                    </span>
-=======
                   <Link href="/forgot-password" className="text-sm text-primary hover:underline">
                     Forgot password?
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
                   </Link>
                 </div>
               </div>

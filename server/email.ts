@@ -2,15 +2,9 @@ import nodemailer from "nodemailer";
 
 // Create reusable transporter object using the default SMTP transport
 const transporter = nodemailer.createTransport({
-<<<<<<< HEAD
-  host: process.env.EMAIL_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.EMAIL_PORT || "587"),
-  secure: process.env.EMAIL_SECURE === "true", // true for 465, false for other ports
-=======
-  host: process.env.SMTP_HOST || 'smtp.hostinger.com',
-  port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: parseInt(process.env.SMTP_PORT || '465') === 465,
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
+  host: process.env.SMTP_HOST || process.env.EMAIL_HOST || "smtp.gmail.com",
+  port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || "587"),
+  secure: process.env.EMAIL_SECURE === "true" || parseInt(process.env.SMTP_PORT || "587") === 465, // true for 465, false for other ports
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,

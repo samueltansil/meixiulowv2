@@ -326,65 +326,7 @@ export default function AdminVideos() {
     staleTime: 0
   });
 
-<<<<<<< HEAD
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Admin Access</h1>
-          <p className="text-muted-foreground text-sm mt-2 mb-6">Please log in to your account first to access the admin panel.</p>
-          <Link href="/login">
-            <Button className="w-full">Log In</Button>
-          </Link>
-          <div className="mt-4">
-            <Link href="/">
-              <Button variant="link" size="sm">Return to Home</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const ALLOWED_ADMIN_EMAILS = ["samueljuliustansil@gmail.com", "admin@whypals.com"];
-  if (!user.email || !ALLOWED_ADMIN_EMAILS.includes(user.email)) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-red-600" />
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Access Denied</h1>
-          <p className="text-muted-foreground text-sm mt-2 mb-6">Your account is not authorized to access the admin panel.</p>
-          <Link href="/">
-            <Button className="w-full">Return to Home</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const isValid = await validateSession();
-      setIsAuthenticated(isValid);
-    };
-    checkSession();
-  }, []);
-
-  const token = getStoredToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers["x-admin-token"] = token;
-  }
-=======
   const isAuthenticated = !!isSessionValid;
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 
   const { data: videos = [], isLoading, error } = useQuery<Video[]>({
     queryKey: ["/api/admin/videos"],

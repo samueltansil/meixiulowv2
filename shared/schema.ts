@@ -22,8 +22,6 @@ export const sessions = pgTable(
   },
 );
 
-<<<<<<< HEAD
-=======
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   userId: varchar("user_id").references(() => users.id).notNull(),
@@ -46,8 +44,6 @@ export const parentVerificationRequests = pgTable("parent_verification_requests"
   index("idx_parent_verification_token").on(table.tokenHash),
   index("idx_parent_verification_code").on(table.codeHash),
 ]);
-
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -309,8 +305,6 @@ export interface WhackGameConfig {
   targetLabel: string;
   distractorImages: string[];
   distractorLabels: string[];
-  holeOuterColor?: string;
-  holeInnerColor?: string;
   backgroundImage?: string;
   holeOuterColor?: string;
   holeInnerColor?: string;
@@ -431,18 +425,8 @@ export const SUBJECTS = [
   'Other',
 ] as const;
 
-export const passwordResetTokens = pgTable("password_reset_tokens", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  tokenHash: varchar("token_hash").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
-<<<<<<< HEAD
-
 export const storyViews = pgTable("story_views", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   storyId: integer("story_id").references(() => stories.id).notNull(),
@@ -483,7 +467,6 @@ export const updateQuestionSchema = createInsertSchema(questions).omit({
   storyId: true,
   userId: true,
 }).partial();
-=======
+
 export type InsertParentVerificationRequest = typeof parentVerificationRequests.$inferInsert;
 export type ParentVerificationRequest = typeof parentVerificationRequests.$inferSelect;
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da

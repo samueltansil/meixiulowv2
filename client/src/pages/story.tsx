@@ -9,13 +9,8 @@ import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
 import { useMemo, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
-<<<<<<< HEAD
 import { useQuery, useMutation } from "@tanstack/react-query";
-import type { Story, StoryGame, Video } from "@shared/schema";
-=======
-import { useQuery } from "@tanstack/react-query";
 import type { Story, StoryGame, Video, PollGameConfig } from "@shared/schema";
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
 import { format } from "date-fns";
 import { Helmet } from "@/lib/helmet";
 import PollGame from "@/components/games/PollGame";

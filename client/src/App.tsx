@@ -17,12 +17,11 @@ import AdminStories from "@/pages/admin-stories";
 import AdminVideos from "@/pages/admin-videos";
 import AdminGames from "@/pages/admin-games";
 import AdminBanners from "@/pages/admin-banners";
-<<<<<<< HEAD
 import AdminQuestions from "@/pages/admin-questions";
 import BigWhyPage from "@/pages/big-why";
 import TeacherDashboard from "@/pages/teacher-dashboard";
-=======
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
+import AdminTeachers from "@/pages/admin-teachers";
+import VerifyTeacher from "@/pages/verify-teacher";
 import Marketplace from "@/pages/marketplace";
 import CourseworkDetail from "@/pages/coursework-detail";
 import TeacherProfile from "@/pages/teacher-profile";
@@ -87,70 +86,46 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
-<<<<<<< HEAD
         <Route path="/admin/stories" component={AdminStories} />
         <Route path="/admin/videos" component={AdminVideos} />
         <Route path="/admin/games" component={AdminGames} />
         <Route path="/admin/teachers" component={AdminTeachers} />
         <Route path="/admin/banners" component={AdminBanners} />
         <Route path="/admin/questions" component={AdminQuestions} />
-        <Route path="/big-why" component={BigWhyPage} />
-        <Route component={Home} />
-      </Switch>
-    );
-  }
-=======
+
+        {/* Auth Routes */}
+        <Route path="/register" component={Register} />
+        <Route path="/login" component={Login} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/verify-parent" component={VerifyParent} />
+
+        {/* Public Routes */}
+        <Route path="/" component={Home} />
+        <Route path="/about" component={About} />
+        <Route path="/contact" component={Contact} />
         <Route path="/games" component={Games} />
         <Route path="/game/:id" component={GamePreview} />
         <Route path="/videos" component={Videos} />
         <Route path="/video/:id" component={VideoPlayer} />
         <Route path="/story/:id" component={Story} />
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
+        <Route path="/big-why" component={BigWhyPage} />
 
         {/* Protected Routes - Only match if authenticated */}
         {isAuthenticated ? <Route path="/r2-video/:key" component={R2VideoPlayer} /> : null}
         {isAuthenticated ? <Route path="/teachers" component={Teachers} /> : null}
+        {isAuthenticated ? <Route path="/teacher-dashboard" component={TeacherDashboard} /> : null}
         {isAuthenticated ? <Route path="/marketplace" component={Marketplace} /> : null}
         {isAuthenticated ? <Route path="/marketplace/:id" component={CourseworkDetail} /> : null}
         {isAuthenticated ? <Route path="/teacher/:id" component={TeacherProfile} /> : null}
         {isAuthenticated ? <Route path="/leaderboard" component={Leaderboard} /> : null}
+        {isAuthenticated ? <Route path="/verify-teacher" component={VerifyTeacher} /> : null}
         {isAuthenticated ? <Route path="/settings" component={Settings} /> : null}
 
-<<<<<<< HEAD
-  return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/about" component={About} />
-      <Route path="/contact" component={Contact} />
-      <Route path="/games" component={Games} />
-      <Route path="/game/:id" component={GamePreview} />
-      <Route path="/videos" component={Videos} />
-      <Route path="/video/:id" component={VideoPlayer} />
-      <Route path="/r2-video/:key" component={R2VideoPlayer} />
-      <Route path="/story/:id" component={Story} />
-      <Route path="/teachers" component={Teachers} />
-      <Route path="/teacher-dashboard" component={TeacherDashboard} />
-      <Route path="/marketplace" component={Marketplace} />
-      <Route path="/marketplace/:id" component={CourseworkDetail} />
-      <Route path="/teacher/:id" component={TeacherProfile} />
-      <Route path="/leaderboard" component={Leaderboard} />
-      <Route path="/verify-teacher" component={VerifyTeacher} />
-      <Route path="/settings" component={Settings} />
-      <Route path="/admin/stories" component={AdminStories} />
-      <Route path="/admin/videos" component={AdminVideos} />
-      <Route path="/admin/games" component={AdminGames} />
-      <Route path="/admin/teachers" component={AdminTeachers} />
-      <Route path="/admin/banners" component={AdminBanners} />
-      <Route path="/admin/questions" component={AdminQuestions} />
-      <Route path="/big-why" component={BigWhyPage} />
-      <Route component={NotFound} />
-    </Switch>
-=======
         {/* Fallback */}
         <Route component={isAuthenticated ? NotFound : Home} />
       </Switch>
     </ErrorBoundary>
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
   );
 }
 

@@ -28,13 +28,6 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-<<<<<<< HEAD
-  async ({ queryKey, meta, signal }) => {
-    const headers =
-      meta && typeof meta === "object" && "headers" in meta ? (meta as any).headers : undefined;
-
-    const res = await fetch(queryKey.join("/") as string, {
-=======
   async ({ queryKey }) => {
     // For SSR, if we are on the server, we need to handle full URLs or inject base URL
     let url = queryKey.join("/") as string;
@@ -42,13 +35,12 @@ export const getQueryFn: <T>(options: {
     // Check if we are in a browser environment
     const isServer = typeof window === 'undefined';
     if (isServer && url.startsWith('/')) {
-        // In SSR, we need a full URL. Assuming localhost:3002 for internal API calls during SSR
+        // In SSR, we need a full URL. Assuming localhost:5000 for internal API calls during SSR
         // This port should match the server configuration
-        url = `http://localhost:3002${url}`;
+        url = `http://localhost:5000${url}`;
     }
 
     const res = await fetch(url, {
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
       credentials: "include",
       headers,
       signal,

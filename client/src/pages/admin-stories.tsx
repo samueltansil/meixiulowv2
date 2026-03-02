@@ -805,6 +805,26 @@ export default function AdminStories() {
     retry: false,
   });
 
+  const { data: storyStats = [] } = useQuery<{ storyId: number; views: number; reads: number }[]>({
+    queryKey: ["/api/admin/story-stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/story-stats", {
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
+    enabled: isAuthenticated,
+  });
+  
+  const statsMap = useMemo(() => {
+    const m = new Map<number, { views: number; reads: number }>();
+    for (const s of storyStats) {
+      m.set(s.storyId, { views: s.views, reads: s.reads });
+    }
+    return m;
+  }, [storyStats]);
+
   const createMutation = useMutation({
     mutationFn: async (data: InsertStory) => {
       const res = await fetch("/api/admin/stories", {
@@ -898,140 +918,7 @@ export default function AdminStories() {
     );
   }
 
-<<<<<<< HEAD
-  useEffect(() => {
-    const checkSession = async () => {
-      const isValid = await validateSession();
-      setIsAuthenticated(isValid);
-    };
-    checkSession();
-  }, []);
 
-  const token = getStoredToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers["x-admin-token"] = token;
-  }
-
-  const { data: stories = [], isLoading, error } = useQuery<Story[]>({
-    queryKey: ["/api/admin/stories"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/stories", {
-        headers: token ? { "x-admin-token": token } : {},
-      });
-      if (!res.ok) throw new Error("Failed to fetch stories");
-      return res.json();
-    },
-    enabled: isAuthenticated,
-  });
-  
-  const { data: storyStats = [] } = useQuery<{ storyId: number; views: number; reads: number }[]>({
-    queryKey: ["/api/admin/story-stats"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/story-stats", {
-        headers: token ? { "x-admin-token": token } : {},
-      });
-      if (!res.ok) throw new Error("Failed to fetch stats");
-      return res.json();
-    },
-    enabled: isAuthenticated,
-  });
-  
-  const statsMap = useMemo(() => {
-    const m = new Map<number, { views: number; reads: number }>();
-    for (const s of storyStats) {
-      m.set(s.storyId, { views: s.views, reads: s.reads });
-    }
-    return m;
-  }, [storyStats]);
-
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch("/api/admin/stories", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create story");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories/featured"] });
-      setIsCreating(false);
-      toast({ title: "Story created successfully!" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await fetch(`/api/admin/stories/${id}`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update story");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories/featured"] });
-      setEditingStory(null);
-      toast({ title: "Story updated successfully!" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/admin/stories/${id}`, {
-        method: "DELETE",
-        headers: token ? { "x-admin-token": token } : {},
-      });
-      if (!res.ok) throw new Error("Failed to delete story");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stories/featured"] });
-      toast({ title: "Story deleted successfully!" });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete story", variant: "destructive" });
-    },
-  });
-
-  const handleDelete = (story: Story) => {
-    if (window.confirm(`Are you sure you want to delete "${story.title}"?`)) {
-      deleteMutation.mutate(story.id);
-    }
-  };
-
-  if (!isAuthenticated || error) {
-    return <AdminLoginDialog onSuccess={() => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories"] });
-      setIsAuthenticated(true);
-    }} />;
-  }
-
-=======
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
       <nav className="p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">
@@ -1092,12 +979,8 @@ export default function AdminStories() {
                   <th className="text-left py-3 px-4 font-heading text-sm">Category</th>
                   <th className="text-left py-3 px-4 font-heading text-sm">Featured</th>
                   <th className="text-left py-3 px-4 font-heading text-sm">Status</th>
-<<<<<<< HEAD
                   <th className="text-right py-3 px-4 font-heading text-sm">Views</th>
                   <th className="text-right py-3 px-4 font-heading text-sm">Read Aloud</th>
-=======
-                  <th className="text-left py-3 px-4 font-heading text-sm">Views</th>
->>>>>>> 8ef9a32f7f6039c648c166a9ea4ee85d183819da
                   <th className="text-right py-3 px-4 font-heading text-sm">Actions</th>
                 </tr>
               </thead>
