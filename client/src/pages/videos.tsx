@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Play, Clock, Search, Menu, FlaskConical, Leaf, Sparkles, Cloud, Pencil, X, Home, Gamepad2, GraduationCap, Settings, Star } from "lucide-react";
+import { Play, Clock, Search, Menu, FlaskConical, Leaf, Sparkles, Cloud, Pencil, X, Home, Gamepad2, GraduationCap, Settings, Star, HelpCircle } from "lucide-react";
 import { FeaturedVideoSlideshow } from "@/components/featured-video-slideshow";
 import logo from "@assets/whypals-logo.png";
 import watchPlaceholder from "@/assets/watch-placeholder.png";
@@ -274,6 +274,7 @@ export default function Videos() {
     { href: "/", label: "Home", icon: Home },
     { href: "/videos", label: "Videos", icon: Play },
     { href: "/games", label: "Games", icon: Gamepad2 },
+    { href: "/big-why", label: "Big Why?", icon: HelpCircle },
   ];
 
   const handleMobileSearchToggle = () => {

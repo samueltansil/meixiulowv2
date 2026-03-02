@@ -1,0 +1,127 @@
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { HelpCircle, Loader2, ArrowLeft } from "lucide-react";
+import { motion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
+import { Question, Story } from "@shared/schema";
+import logo from "@/assets/whypals-logo.png";
+
+export default function BigWhyPage() {
+  const { data: questions, isLoading } = useQuery<Question[]>({
+    queryKey: ["/api/questions/published"],
+  });
+
+  const { data: stories } = useQuery<Story[]>({
+    queryKey: ["/api/stories"],
+  });
+
+  const getStoryTitle = (storyId: number) => {
+    return stories?.find(s => s.id === storyId)?.title || "Unknown Story";
+  };
+
+  return (
+    <div className="min-h-screen bg-background font-sans flex flex-col">
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/50">
+        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <img src={logo} alt="WhyPals Logo" className="h-12 w-12 object-contain" />
+            <span className="font-heading text-2xl font-bold text-primary tracking-tight">WhyPals</span>
+          </Link>
+          
+          <div className="hidden md:flex items-center gap-8 font-heading font-semibold text-muted-foreground">
+            <Link href="/" className="hover:text-primary transition-colors">Home</Link>
+            <Link href="/games" className="hover:text-primary transition-colors">Games</Link>
+            <Link href="/big-why" className="text-primary transition-colors">Big Why?</Link>
+          </div>
+        </div>
+      </nav>
+
+      <main className="flex-grow container mx-auto px-4 py-12">
+        <div className="flex flex-col items-center mb-16 text-center">
+          <div className="relative mb-6">
+            <motion.div 
+              className="absolute inset-0 bg-green-500 blur-xl opacity-40 rounded-3xl"
+              animate={{ 
+                opacity: [0.4, 0.7, 0.4],
+                scale: [0.95, 1.1, 0.95],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
+            <motion.div 
+              className="w-24 h-24 rounded-3xl bg-card border-2 border-green-500/50 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.4)] relative z-10"
+              initial={{ rotate: 3, y: 0 }}
+              animate={{ 
+                y: [0, -10, 0],
+                rotate: [3, 6, 3],
+              }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              <HelpCircle className="w-12 h-12 text-green-500 drop-shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
+            </motion.div>
+          </div>
+          <h1 className="font-heading text-5xl md:text-7xl font-bold text-foreground mb-6 tracking-tight">
+            The Big Why?
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl leading-relaxed">
+            Curious minds ask the best questions. Explore the database of answers to the most interesting "Whys" from our community.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          </div>
+        ) : questions?.length === 0 ? (
+          <div className="text-center py-20 bg-muted/30 rounded-3xl border border-border/50">
+            <HelpCircle className="w-20 h-20 text-muted-foreground/50 mx-auto mb-6" />
+            <h3 className="text-2xl font-bold text-muted-foreground">No questions answered yet</h3>
+            <p className="text-muted-foreground mt-2 text-lg">Be the first to ask a Big Why on any story page!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {questions?.map((q) => (
+              <Card key={q.id} className="overflow-hidden border border-border/50 bg-card hover:shadow-lg transition-all duration-300 group rounded-2xl">
+                <CardHeader className="bg-muted/30 pb-4 border-b border-border/50">
+                  <div className="text-xs font-bold text-primary uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary"></span>
+                    {getStoryTitle(q.storyId)}
+                  </div>
+                  <CardTitle className="font-heading text-2xl leading-tight text-foreground group-hover:text-primary transition-colors">
+                    "{q.question}"
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="prose prose-slate prose-lg">
+                    <p className="text-muted-foreground leading-relaxed">
+                      {q.answer}
+                    </p>
+                  </div>
+                  <div className="mt-8 pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary/50" />
+                      Asked by a curious pal
+                    </span>
+                    {q.answeredAt && (
+                      <span className="font-mono opacity-70">
+                        {format(new Date(q.answeredAt), 'MMM d, yyyy')}
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

@@ -28,9 +28,14 @@ import {
   passwordResetTokens,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  storyViews,
+  storyReaderPlays,
+  questions,
+  type Question,
+  type InsertQuestion,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, or, inArray, not, isNull } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -91,6 +96,14 @@ export interface IStorage {
   createCoursework(item: InsertCourseworkItem): Promise<CourseworkItem>;
   updateCoursework(id: number, item: Partial<InsertCourseworkItem>): Promise<CourseworkItem>;
   deleteCoursework(id: number): Promise<void>;
+
+  // Questions
+  createQuestion(question: InsertQuestion): Promise<Question>;
+  getPublishedQuestions(): Promise<Question[]>;
+  getAllQuestions(): Promise<Question[]>;
+  getQuestionById(id: number): Promise<Question | undefined>;
+  updateQuestion(id: number, question: Partial<Question>): Promise<Question>;
+  deleteQuestion(id: number): Promise<void>;
   
   // Teacher Profile
   getTeachers(): Promise<User[]>;
@@ -115,6 +128,10 @@ export interface IStorage {
   getPasswordResetToken(tokenHash: string): Promise<PasswordResetToken | undefined>;
   deletePasswordResetToken(id: number): Promise<void>;
   deletePasswordResetTokensByUserId(userId: string): Promise<void>;
+
+  addStoryView(storyId: number, userId?: string): Promise<void>;
+  addStoryReaderPlay(storyId: number, userId?: string): Promise<void>;
+  getAllStoryStats(excludedEmails: string[]): Promise<{ storyId: number; views: number; reads: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -626,6 +643,77 @@ export class DatabaseStorage implements IStorage {
 
   async deletePasswordResetTokensByUserId(userId: string): Promise<void> {
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+  }
+
+  async addStoryView(storyId: number, userId?: string): Promise<void> {
+    await db.insert(storyViews).values({ storyId, userId });
+  }
+
+  async addStoryReaderPlay(storyId: number, userId?: string): Promise<void> {
+    await db.insert(storyReaderPlays).values({ storyId, userId });
+  }
+
+  async getAllStoryStats(excludedEmails: string[]): Promise<{ storyId: number; views: number; reads: number }[]> {
+    const viewsRows = await db
+      .select({ storyId: storyViews.storyId, count: sql<number>`count(*)` })
+      .from(storyViews)
+      .leftJoin(users, eq(storyViews.userId, users.id))
+      .where(or(isNull(users.email), not(inArray(users.email, excludedEmails))))
+      .groupBy(storyViews.storyId);
+
+    const readsRows = await db
+      .select({ storyId: storyReaderPlays.storyId, count: sql<number>`count(*)` })
+      .from(storyReaderPlays)
+      .leftJoin(users, eq(storyReaderPlays.userId, users.id))
+      .where(or(isNull(users.email), not(inArray(users.email, excludedEmails))))
+      .groupBy(storyReaderPlays.storyId);
+
+    const map = new Map<number, { views: number; reads: number }>();
+    for (const r of viewsRows) {
+      map.set(r.storyId, { views: r.count, reads: 0 });
+    }
+    for (const r of readsRows) {
+      const existing = map.get(r.storyId) || { views: 0, reads: 0 };
+      existing.reads = r.count;
+      map.set(r.storyId, existing);
+    }
+    return Array.from(map.entries()).map(([storyId, s]) => ({ storyId, views: s.views, reads: s.reads }));
+  }
+
+  // Questions Implementation
+  async createQuestion(questionData: InsertQuestion): Promise<Question> {
+    const [question] = await db.insert(questions).values(questionData).returning();
+    return question;
+  }
+
+  async getPublishedQuestions(): Promise<Question[]> {
+    return await db
+      .select()
+      .from(questions)
+      .where(eq(questions.isPublished, true))
+      .orderBy(desc(questions.answeredAt));
+  }
+
+  async getAllQuestions(): Promise<Question[]> {
+    return await db.select().from(questions).orderBy(desc(questions.createdAt));
+  }
+
+  async getQuestionById(id: number): Promise<Question | undefined> {
+    const [question] = await db.select().from(questions).where(eq(questions.id, id));
+    return question;
+  }
+
+  async updateQuestion(id: number, questionData: Partial<Question>): Promise<Question> {
+    const [question] = await db
+      .update(questions)
+      .set(questionData)
+      .where(eq(questions.id, id))
+      .returning();
+    return question;
+  }
+
+  async deleteQuestion(id: number): Promise<void> {
+    await db.delete(questions).where(eq(questions.id, id));
   }
 }
 

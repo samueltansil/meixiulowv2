@@ -27,6 +27,7 @@ export default function Leaderboard() {
     { href: "/", label: "Home", icon: Home },
     { href: "/videos", label: "Videos", icon: Play },
     { href: "/games", label: "Games", icon: Gamepad2 },
+    { href: "/big-why", label: "Big Why?", icon: HelpCircle },
   ];
 
   const getRankIcon = (index: number) => {

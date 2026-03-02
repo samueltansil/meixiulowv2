@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Plus, Edit, Trash2, Eye, EyeOff, Star, ArrowLeft, Save, X, Upload, Loader2, Lock, Shield, Volume2, CheckCircle, AlertCircle } from "lucide-react";
@@ -723,7 +723,7 @@ function StoryForm({
   );
 }
 
-function StoryRow({ story, onEdit, onDelete }: { story: Story; onEdit: () => void; onDelete: () => void }) {
+function StoryRow({ story, views, reads, onEdit, onDelete }: { story: Story; views: number; reads: number; onEdit: () => void; onDelete: () => void }) {
   return (
     <motion.tr
       initial={{ opacity: 0 }}
@@ -771,6 +771,12 @@ function StoryRow({ story, onEdit, onDelete }: { story: Story; onEdit: () => voi
             <EyeOff className="w-3 h-3" /> Draft
           </span>
         )}
+      </td>
+      <td className="py-4 px-4 text-right">
+        <span className="text-sm font-medium">{views}</span>
+      </td>
+      <td className="py-4 px-4 text-right">
+        <span className="text-sm font-medium">{reads}</span>
       </td>
       <td className="py-4 px-4 text-right">
         <div className="flex items-center justify-end gap-2">
@@ -869,6 +875,26 @@ export default function AdminStories() {
     },
     enabled: isAuthenticated,
   });
+  
+  const { data: storyStats = [] } = useQuery<{ storyId: number; views: number; reads: number }[]>({
+    queryKey: ["/api/admin/story-stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/story-stats", {
+        headers: token ? { "x-admin-token": token } : {},
+      });
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
+    enabled: isAuthenticated,
+  });
+  
+  const statsMap = useMemo(() => {
+    const m = new Map<number, { views: number; reads: number }>();
+    for (const s of storyStats) {
+      m.set(s.storyId, { views: s.views, reads: s.reads });
+    }
+    return m;
+  }, [storyStats]);
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -1013,6 +1039,8 @@ export default function AdminStories() {
                   <th className="text-left py-3 px-4 font-heading text-sm">Category</th>
                   <th className="text-left py-3 px-4 font-heading text-sm">Featured</th>
                   <th className="text-left py-3 px-4 font-heading text-sm">Status</th>
+                  <th className="text-right py-3 px-4 font-heading text-sm">Views</th>
+                  <th className="text-right py-3 px-4 font-heading text-sm">Read Aloud</th>
                   <th className="text-right py-3 px-4 font-heading text-sm">Actions</th>
                 </tr>
               </thead>
@@ -1021,6 +1049,8 @@ export default function AdminStories() {
                   <StoryRow
                     key={story.id}
                     story={story}
+                    views={statsMap.get(story.id)?.views ?? 0}
+                    reads={statsMap.get(story.id)?.reads ?? 0}
                     onEdit={() => setEditingStory(story)}
                     onDelete={() => handleDelete(story)}
                   />

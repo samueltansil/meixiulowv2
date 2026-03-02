@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Menu, ChevronLeft, ChevronRight, X, Home as HomeIcon, Gamepad2, GraduationCap, Settings, Star } from "lucide-react";
+import { Search, Menu, ChevronLeft, ChevronRight, X, Home as HomeIcon, Gamepad2, GraduationCap, Settings, Star, HelpCircle } from "lucide-react";
 import logo from "@assets/whypals-logo.png";
 import { CATEGORIES } from "@/lib/data";
 import { NewsCard } from "@/components/news-card";
@@ -28,6 +28,7 @@ export default function Home() {
   const navLinks = [
     { href: "/", label: "Home", icon: HomeIcon },
     { href: "/games", label: "Games", icon: Gamepad2 },
+    { href: "/big-why", label: "Big Why?", icon: HelpCircle },
   ];
 
   const handleMobileSearchToggle = () => {
@@ -99,6 +100,7 @@ export default function Home() {
           <div className="hidden md:flex items-center gap-8 font-heading font-semibold text-muted-foreground">
             <Link href="/" className="text-primary hover:text-primary transition-colors">Home</Link>
             <Link href="/games" className="hover:text-primary transition-colors">Games</Link>
+            <Link href="/big-why" className="hover:text-primary transition-colors">Big Why?</Link>
           </div>
 
           <div className="flex items-center gap-4">

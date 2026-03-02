@@ -18,6 +18,8 @@ import AdminVideos from "@/pages/admin-videos";
 import AdminGames from "@/pages/admin-games";
 import AdminTeachers from "@/pages/admin-teachers";
 import AdminBanners from "@/pages/admin-banners";
+import AdminQuestions from "@/pages/admin-questions";
+import BigWhyPage from "@/pages/big-why";
 import TeacherDashboard from "@/pages/teacher-dashboard";
 import Marketplace from "@/pages/marketplace";
 import CourseworkDetail from "@/pages/coursework-detail";
@@ -79,6 +81,8 @@ function Router() {
         <Route path="/admin/games" component={AdminGames} />
         <Route path="/admin/teachers" component={AdminTeachers} />
         <Route path="/admin/banners" component={AdminBanners} />
+        <Route path="/admin/questions" component={AdminQuestions} />
+        <Route path="/big-why" component={BigWhyPage} />
         <Route component={Home} />
       </Switch>
     );
@@ -117,6 +121,8 @@ function Router() {
       <Route path="/admin/games" component={AdminGames} />
       <Route path="/admin/teachers" component={AdminTeachers} />
       <Route path="/admin/banners" component={AdminBanners} />
+      <Route path="/admin/questions" component={AdminQuestions} />
+      <Route path="/big-why" component={BigWhyPage} />
       <Route component={NotFound} />
     </Switch>
   );

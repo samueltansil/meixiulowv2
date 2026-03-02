@@ -95,11 +95,6 @@ export default function Login() {
                     required
                   />
                 </div>
-                <div className="flex justify-end">
-                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
               </div>
 
               <div className="space-y-2">
@@ -122,6 +117,13 @@ export default function Login() {
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
+                </div>
+                <div className="flex justify-end">
+                  <Link href="/forgot-password">
+                    <span className="text-xs text-primary hover:underline cursor-pointer">
+                      Forgot password?
+                    </span>
+                  </Link>
                 </div>
               </div>
             </CardContent>

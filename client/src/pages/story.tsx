@@ -1,14 +1,15 @@
 import { Link, useParams } from "wouter";
-import { ArrowLeft, Clock, Calendar, Play, Pause, Square, Volume2, Loader2, Gamepad2 } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, Play, Pause, Square, Volume2, Loader2, Gamepad2, HelpCircle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { CATEGORIES } from "@/lib/data";
 import logo from "@assets/whypals-logo.png";
-import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Story, StoryGame, Video } from "@shared/schema";
 import { format } from "date-fns";
 
@@ -160,12 +161,45 @@ function HighlightedParagraph({
 
 export default function StoryPage() {
   const params = useParams<{ id: string }>();
-  useActivityTracker('reading');
   const currentParagraphRef = useRef<HTMLParagraphElement>(null);
-  
+  const countedPlayRef = useRef<boolean>(false);
+  const { toast } = useToast();
+  const [questionText, setQuestionText] = useState("");
+
   const { data: article, isLoading: isLoadingStory } = useQuery<Story>({
     queryKey: [`/api/stories/${params.id}`],
     enabled: !!params.id,
+  });
+
+  const submitQuestionMutation = useMutation({
+    mutationFn: async (text: string) => {
+      if (!article?.id) throw new Error("No story loaded");
+      const res = await fetch("/api/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          storyId: article.id, 
+          question: text 
+        }),
+      });
+      
+      if (!res.ok) throw new Error("Failed to submit question");
+      return res.json();
+    },
+    onSuccess: () => {
+      setQuestionText("");
+      toast({
+        title: "Question submitted!",
+        description: "Thank you for your curiosity. We'll answer it soon on the Big Why page!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Submission failed",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
   });
 
   const { data: videos = [] } = useQuery<Video[]>({
@@ -207,7 +241,7 @@ export default function StoryPage() {
   }, [article?.title, games]);
   
   const paragraphs = useMemo(() => 
-    article?.content.split('\n\n') || [], 
+    article?.content?.split('\n\n') || [], 
     [article?.content]
   );
 
@@ -255,6 +289,13 @@ export default function StoryPage() {
     }
   }, [currentParagraphIndex]);
 
+  useEffect(() => {
+    const idOrSlug = article?.id ?? params.id;
+    if (idOrSlug) {
+      fetch(`/api/stories/${idOrSlug}/view`, { method: "POST", credentials: "same-origin" }).catch(() => {});
+    }
+  }, [article?.id, params.id]);
+
   if (isLoadingStory) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -288,6 +329,13 @@ export default function StoryPage() {
 
   const handlePlayPause = () => {
     if (!isPlaying) {
+      if (!countedPlayRef.current) {
+        const idOrSlug = article?.id ?? params.id;
+        if (idOrSlug) {
+          fetch(`/api/stories/${idOrSlug}/read-aloud`, { method: "POST", credentials: "same-origin" }).catch(() => {});
+        }
+        countedPlayRef.current = true;
+      }
       speak(textParagraphsForTTS);
     } else if (isPaused) {
       resume();
@@ -297,6 +345,7 @@ export default function StoryPage() {
   };
 
   const handleStop = () => {
+    countedPlayRef.current = false;
     stop();
   };
 
@@ -531,6 +580,8 @@ export default function StoryPage() {
             </div>
           )}
 
+
+
           {/* Related Game Section */}
           {relatedGame && (
             <div className="mt-8 p-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-900/20 dark:via-teal-900/20 dark:to-emerald-900/20 rounded-3xl border-2 border-emerald-200 dark:border-emerald-800 shadow-lg">
@@ -571,6 +622,61 @@ export default function StoryPage() {
               </div>
             </div>
           )}
+
+          {/* Big Why Question Section */}
+          <div className="mt-12 mb-8 p-8 bg-card rounded-3xl border border-border shadow-sm relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 opacity-5 pointer-events-none">
+              <HelpCircle className="w-64 h-64 text-muted-foreground transform rotate-12" />
+            </div>
+            
+            <div className="relative z-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center transform -rotate-3">
+                  <HelpCircle className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-heading text-2xl md:text-3xl font-bold text-foreground">
+                    Have a Big Why?
+                  </h3>
+                  <p className="text-muted-foreground font-medium text-lg">
+                    Ask us a question about this story!
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (questionText.trim()) {
+                  submitQuestionMutation.mutate(questionText);
+                }
+              }} className="space-y-4">
+                <div className="bg-background rounded-2xl p-2 shadow-inner border border-input focus-within:ring-2 focus-within:ring-ring transition-all">
+                  <Textarea
+                    placeholder="I wonder why..."
+                    className="min-h-[120px] resize-none border-0 bg-transparent focus-visible:ring-0 text-lg placeholder:text-muted-foreground/60 text-foreground"
+                    value={questionText}
+                    onChange={(e) => setQuestionText(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button 
+                    type="submit" 
+                    size="lg"
+                    disabled={submitQuestionMutation.isPending || !questionText.trim()}
+                    className="rounded-full gap-2 px-8 text-lg font-bold"
+                  >
+                    {submitQuestionMutation.isPending ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
+                    Submit My Question
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       </main>
 

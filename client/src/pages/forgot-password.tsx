@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import logo from "@assets/whypals-logo.png";
-import { Mail, Loader2, ArrowLeft } from "lucide-react";
+import logo from "@/assets/whypals-logo.png";
+import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function ForgotPassword() {
@@ -19,19 +19,19 @@ export default function ForgotPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
       await apiRequest("POST", "/api/auth/forgot-password", { email });
       setIsSubmitted(true);
       toast({
-        title: "Email sent",
-        description: "If an account exists with that email, we've sent a password reset link.",
+        title: "Reset link sent",
+        description: "If an account exists with this email, you will receive a password reset link.",
       });
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Request failed",
-        description: error.message || "Failed to process request.",
+        description: error.message || "Failed to send reset link. Please try again.",
       });
     } finally {
       setIsLoading(false);
@@ -48,6 +48,7 @@ export default function ForgotPassword() {
           </Button>
         </Link>
       </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -58,32 +59,29 @@ export default function ForgotPassword() {
           <Link href="/">
             <img src={logo} alt="WhyPals" className="h-20 w-20 mx-auto mb-4" />
           </Link>
-          <h1 className="font-heading text-3xl font-bold text-primary">Forgot Password</h1>
-          <p className="text-muted-foreground mt-2">Recover your account access</p>
+          <h1 className="font-heading text-3xl font-bold text-primary">Forgot Password?</h1>
+          <p className="text-muted-foreground mt-2">
+            {isSubmitted 
+              ? "Check your email for instructions" 
+              : "Enter your email to reset your password"}
+          </p>
         </div>
 
         <Card className="shadow-xl border-2 border-primary/10">
           <CardHeader>
-            <CardTitle className="font-heading text-xl">Reset Password</CardTitle>
+            <CardTitle className="font-heading text-xl">
+              {isSubmitted ? "Email Sent" : "Reset Password"}
+            </CardTitle>
             <CardDescription>
               {isSubmitted 
-                ? "Check your email for the reset link" 
-                : "Enter your email address to receive a reset link"}
+                ? "We've sent a password reset link to your email address." 
+                : "Enter the email address associated with your account and we'll send you a link to reset your password."}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {isSubmitted ? (
-              <div className="text-center py-4 space-y-4">
-                <div className="bg-primary/10 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
-                  <Mail className="h-8 w-8 text-primary" />
-                </div>
-                <p className="text-muted-foreground">
-                  We've sent a password reset link to <strong>{email}</strong>.
-                  Please check your inbox and follow the instructions.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+          
+          {!isSubmitted ? (
+            <form onSubmit={handleSubmit}>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <div className="relative">
@@ -99,32 +97,34 @@ export default function ForgotPassword() {
                     />
                   </div>
                 </div>
-                <Button 
-                  type="submit" 
-                  className="w-full gap-2" 
-                  size="lg"
-                  disabled={isLoading || !email}
-                >
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Sending link...
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
                     </>
                   ) : (
                     "Send Reset Link"
                   )}
                 </Button>
-              </form>
-            )}
-          </CardContent>
-          <CardFooter className="flex justify-center">
-            <p className="text-sm text-center text-muted-foreground">
-              Remember your password?{" "}
-              <Link href="/login" className="text-primary font-semibold hover:underline">
-                Log in
+              </CardFooter>
+            </form>
+          ) : (
+            <CardFooter className="flex flex-col space-y-2">
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => setIsSubmitted(false)}
+              >
+                Try another email
+              </Button>
+              <Link href="/login" className="w-full">
+                <Button className="w-full">Return to Login</Button>
               </Link>
-            </p>
-          </CardFooter>
+            </CardFooter>
+          )}
         </Card>
       </motion.div>
     </div>

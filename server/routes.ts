@@ -15,6 +15,8 @@ import {
   insertCourseworkItemSchema, 
   updateCourseworkItemSchema,
   insertBannerSchema,
+  insertQuestionSchema,
+  updateQuestionSchema,
   type InsertVideo, 
   type InsertStory, 
   type InsertStoryGame, 
@@ -751,6 +753,66 @@ export async function registerRoutes(
     }
   });
 
+  app.post('/api/stories/:id/view', async (req: any, res) => {
+    try {
+      const idParam = req.params.id;
+      let storyId: number | undefined;
+      const idNum = parseInt(idParam);
+      if (isNaN(idNum)) {
+        const story = await storage.getStoryBySlug(idParam);
+        storyId = story?.id;
+      } else {
+        storyId = idNum;
+      }
+      if (!storyId) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+      const userId = getUserIdFromRequest(req);
+      await storage.addStoryView(storyId, userId ?? undefined);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording story view:", error);
+      res.status(500).json({ message: "Failed to record view" });
+    }
+  });
+
+  app.post('/api/stories/:id/read-aloud', async (req: any, res) => {
+    try {
+      const idParam = req.params.id;
+      let storyId: number | undefined;
+      const idNum = parseInt(idParam);
+      if (isNaN(idNum)) {
+        const story = await storage.getStoryBySlug(idParam);
+        storyId = story?.id;
+      } else {
+        storyId = idNum;
+      }
+      if (!storyId) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+      const userId = getUserIdFromRequest(req);
+      await storage.addStoryReaderPlay(storyId, userId ?? undefined);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording reader play:", error);
+      res.status(500).json({ message: "Failed to record reader play" });
+    }
+  });
+
+  app.get('/api/admin/story-stats', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const excluded = ["samueljuliustansil@gmail.com", "meixiu.low@gmail.com"];
+      const stats = await storage.getAllStoryStats(excluded);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching story stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
   // Image upload for story thumbnails - admin only (server-side upload to avoid CORS)
   app.post('/api/admin/upload/image', upload.single('image'), async (req: any, res) => {
     try {
@@ -1032,6 +1094,91 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting story:", error);
       res.status(500).json({ message: "Failed to delete story" });
+    }
+  });
+
+  // Questions Routes (Big Why)
+  app.get('/api/questions/published', async (_req, res) => {
+    try {
+      const questions = await storage.getPublishedQuestions();
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching published questions:", error);
+      res.status(500).json({ message: "Failed to fetch questions" });
+    }
+  });
+
+  app.post('/api/questions', async (req: any, res) => {
+    try {
+      const schema = z.object({
+        storyId: z.number(),
+        question: z.string().min(1),
+      });
+
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const userId = req.session?.userId || null;
+      const question = await storage.createQuestion({
+        storyId: result.data.storyId,
+        question: result.data.question,
+        userId,
+      });
+      res.status(201).json(question);
+    } catch (error) {
+      console.error("Error creating question:", error);
+      res.status(500).json({ message: "Failed to submit question" });
+    }
+  });
+
+  // Admin Question Routes
+  app.get('/api/admin/questions', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const questions = await storage.getAllQuestions();
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching admin questions:", error);
+      res.status(500).json({ message: "Failed to fetch questions" });
+    }
+  });
+
+  app.patch('/api/admin/questions/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const id = parseInt(req.params.id);
+      const result = updateQuestionSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: fromZodError(result.error).message });
+      }
+
+      const question = await storage.updateQuestion(id, result.data);
+      res.json(question);
+    } catch (error) {
+      console.error("Error updating question:", error);
+      res.status(500).json({ message: "Failed to update question" });
+    }
+  });
+
+  app.delete('/api/admin/questions/:id', async (req: any, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const id = parseInt(req.params.id);
+      await storage.deleteQuestion(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      res.status(500).json({ message: "Failed to delete question" });
     }
   });
 

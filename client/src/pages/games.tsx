@@ -90,6 +90,7 @@ export default function Games() {
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
     { href: "/games", label: "Games", icon: Gamepad2 },
+    { href: "/big-why", label: "Big Why?", icon: HelpCircle },
   ];
 
   const handleMobileSearchToggle = () => {
@@ -120,6 +121,7 @@ export default function Games() {
           <div className="hidden md:flex items-center gap-8 font-heading font-semibold text-muted-foreground">
              <Link href="/" className="hover:text-primary transition-colors">Home</Link>
              <Link href="/games" className="text-primary transition-colors">Games</Link>
+             <Link href="/big-why" className="hover:text-primary transition-colors">Big Why?</Link>
           </div>
 
           <div className="flex items-center gap-4">

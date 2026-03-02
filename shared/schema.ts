@@ -22,14 +22,6 @@ export const sessions = pgTable(
   },
 );
 
-export const passwordResetTokens = pgTable("password_reset_tokens", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  tokenHash: varchar("token_hash").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -274,6 +266,8 @@ export interface WhackGameConfig {
   targetLabel: string;
   distractorImages: string[];
   distractorLabels: string[];
+  holeOuterColor?: string;
+  holeInnerColor?: string;
   backgroundImage?: string;
   duration: number; // seconds
   winMessage?: string;
@@ -383,5 +377,54 @@ export const SUBJECTS = [
   'Other',
 ] as const;
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  tokenHash: varchar("token_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+export const storyViews = pgTable("story_views", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  storyId: integer("story_id").references(() => stories.id).notNull(),
+  userId: varchar("user_id"), // Optional user ID for tracking logged-in users
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const storyReaderPlays = pgTable("story_reader_plays", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  storyId: integer("story_id").references(() => stories.id).notNull(),
+  userId: varchar("user_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const questions = pgTable("questions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  storyId: integer("story_id").references(() => stories.id).notNull(),
+  userId: varchar("user_id"), // Optional: if we want to track user (though current auth might be session-based or minimal)
+  question: text("question").notNull(),
+  answer: text("answer"),
+  isPublished: boolean("is_published").default(false).notNull(),
+  answeredAt: timestamp("answered_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type InsertQuestion = typeof questions.$inferInsert;
+export type Question = typeof questions.$inferSelect;
+
+export const insertQuestionSchema = createInsertSchema(questions).omit({
+  createdAt: true,
+  answer: true,
+  isPublished: true,
+  answeredAt: true,
+});
+
+export const updateQuestionSchema = createInsertSchema(questions).omit({
+  createdAt: true,
+  storyId: true,
+  userId: true,
+}).partial();

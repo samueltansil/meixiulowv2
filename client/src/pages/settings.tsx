@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { Search, LogOut, User, Bell, Shield, CreditCard, Menu, X, Home, Play, Gamepad2, GraduationCap, Settings as SettingsIcon, BookOpen, Users, AlertTriangle, Lock, Eye, EyeOff, ChevronRight, Check, Loader2 } from "lucide-react";
+import { Search, LogOut, User, Bell, Shield, CreditCard, Menu, X, Home, Play, Gamepad2, GraduationCap, Settings as SettingsIcon, BookOpen, Users, AlertTriangle, Lock, Eye, EyeOff, ChevronRight, Check, Loader2, HelpCircle } from "lucide-react";
 import logo from "@assets/whypals-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -168,6 +168,7 @@ export default function Settings() {
     { href: "/", label: "Home", icon: Home },
     { href: "/videos", label: "Videos", icon: Play },
     { href: "/games", label: "Games", icon: Gamepad2 },
+    { href: "/big-why", label: "Big Why?", icon: HelpCircle },
   ];
 
   const handleMobileSearchToggle = () => {

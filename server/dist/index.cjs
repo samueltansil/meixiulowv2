@@ -50,19 +50,24 @@ __export(schema_exports, {
   courseworkItemsRelations: () => courseworkItemsRelations,
   insertBannerSchema: () => insertBannerSchema,
   insertCourseworkItemSchema: () => insertCourseworkItemSchema,
+  insertQuestionSchema: () => insertQuestionSchema,
   insertR2VideoMetadataSchema: () => insertR2VideoMetadataSchema,
   insertStoryGameSchema: () => insertStoryGameSchema,
   insertStorySchema: () => insertStorySchema,
   insertSubscriptionSchema: () => insertSubscriptionSchema,
   insertVideoSchema: () => insertVideoSchema,
   passwordResetTokens: () => passwordResetTokens,
+  questions: () => questions,
   r2VideoMetadata: () => r2VideoMetadata,
   sessions: () => sessions,
   stories: () => stories,
   storyGames: () => storyGames,
+  storyReaderPlays: () => storyReaderPlays,
+  storyViews: () => storyViews,
   subscriptionRelations: () => subscriptionRelations,
   subscriptions: () => subscriptions,
   updateCourseworkItemSchema: () => updateCourseworkItemSchema,
+  updateQuestionSchema: () => updateQuestionSchema,
   updateStoryGameSchema: () => updateStoryGameSchema,
   updateStorySchema: () => updateStorySchema,
   updateVideoSchema: () => updateVideoSchema,
@@ -85,13 +90,6 @@ var sessions = (0, import_pg_core.pgTable)(
     expire: (0, import_pg_core.timestamp)("expire").notNull()
   }
 );
-var passwordResetTokens = (0, import_pg_core.pgTable)("password_reset_tokens", {
-  id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
-  userId: (0, import_pg_core.varchar)("user_id").references(() => users.id).notNull(),
-  tokenHash: (0, import_pg_core.varchar)("token_hash").notNull(),
-  expiresAt: (0, import_pg_core.timestamp)("expires_at").notNull(),
-  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow().notNull()
-});
 var users = (0, import_pg_core.pgTable)("users", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
   email: (0, import_pg_core.varchar)("email").unique(),
@@ -344,6 +342,48 @@ var SUBJECTS = [
   "Foreign Language",
   "Other"
 ];
+var passwordResetTokens = (0, import_pg_core.pgTable)("password_reset_tokens", {
+  id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: (0, import_pg_core.varchar)("user_id").references(() => users.id).notNull(),
+  tokenHash: (0, import_pg_core.varchar)("token_hash").notNull(),
+  expiresAt: (0, import_pg_core.timestamp)("expires_at").notNull(),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow().notNull()
+});
+var storyViews = (0, import_pg_core.pgTable)("story_views", {
+  id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
+  storyId: (0, import_pg_core.integer)("story_id").references(() => stories.id).notNull(),
+  userId: (0, import_pg_core.varchar)("user_id"),
+  // Optional user ID for tracking logged-in users
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow().notNull()
+});
+var storyReaderPlays = (0, import_pg_core.pgTable)("story_reader_plays", {
+  id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
+  storyId: (0, import_pg_core.integer)("story_id").references(() => stories.id).notNull(),
+  userId: (0, import_pg_core.varchar)("user_id"),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow().notNull()
+});
+var questions = (0, import_pg_core.pgTable)("questions", {
+  id: (0, import_pg_core.integer)("id").primaryKey().generatedAlwaysAsIdentity(),
+  storyId: (0, import_pg_core.integer)("story_id").references(() => stories.id).notNull(),
+  userId: (0, import_pg_core.varchar)("user_id"),
+  // Optional: if we want to track user (though current auth might be session-based or minimal)
+  question: (0, import_pg_core.text)("question").notNull(),
+  answer: (0, import_pg_core.text)("answer"),
+  isPublished: (0, import_pg_core.boolean)("is_published").default(false).notNull(),
+  answeredAt: (0, import_pg_core.timestamp)("answered_at"),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow().notNull()
+});
+var insertQuestionSchema = (0, import_drizzle_zod.createInsertSchema)(questions).omit({
+  createdAt: true,
+  answer: true,
+  isPublished: true,
+  answeredAt: true
+});
+var updateQuestionSchema = (0, import_drizzle_zod.createInsertSchema)(questions).omit({
+  createdAt: true,
+  storyId: true,
+  userId: true
+}).partial();
 
 // server/db.ts
 var import_node_postgres = require("drizzle-orm/node-postgres");
@@ -669,6 +709,48 @@ var DatabaseStorage = class {
   async deletePasswordResetTokensByUserId(userId) {
     await db.delete(passwordResetTokens).where((0, import_drizzle_orm3.eq)(passwordResetTokens.userId, userId));
   }
+  async addStoryView(storyId, userId) {
+    await db.insert(storyViews).values({ storyId, userId });
+  }
+  async addStoryReaderPlay(storyId, userId) {
+    await db.insert(storyReaderPlays).values({ storyId, userId });
+  }
+  async getAllStoryStats(excludedEmails) {
+    const viewsRows = await db.select({ storyId: storyViews.storyId, count: import_drizzle_orm3.sql`count(*)` }).from(storyViews).leftJoin(users, (0, import_drizzle_orm3.eq)(storyViews.userId, users.id)).where((0, import_drizzle_orm3.or)((0, import_drizzle_orm3.isNull)(users.email), (0, import_drizzle_orm3.not)((0, import_drizzle_orm3.inArray)(users.email, excludedEmails)))).groupBy(storyViews.storyId);
+    const readsRows = await db.select({ storyId: storyReaderPlays.storyId, count: import_drizzle_orm3.sql`count(*)` }).from(storyReaderPlays).leftJoin(users, (0, import_drizzle_orm3.eq)(storyReaderPlays.userId, users.id)).where((0, import_drizzle_orm3.or)((0, import_drizzle_orm3.isNull)(users.email), (0, import_drizzle_orm3.not)((0, import_drizzle_orm3.inArray)(users.email, excludedEmails)))).groupBy(storyReaderPlays.storyId);
+    const map = /* @__PURE__ */ new Map();
+    for (const r of viewsRows) {
+      map.set(r.storyId, { views: r.count, reads: 0 });
+    }
+    for (const r of readsRows) {
+      const existing = map.get(r.storyId) || { views: 0, reads: 0 };
+      existing.reads = r.count;
+      map.set(r.storyId, existing);
+    }
+    return Array.from(map.entries()).map(([storyId, s]) => ({ storyId, views: s.views, reads: s.reads }));
+  }
+  // Questions Implementation
+  async createQuestion(questionData) {
+    const [question] = await db.insert(questions).values(questionData).returning();
+    return question;
+  }
+  async getPublishedQuestions() {
+    return await db.select().from(questions).where((0, import_drizzle_orm3.eq)(questions.isPublished, true)).orderBy((0, import_drizzle_orm3.desc)(questions.answeredAt));
+  }
+  async getAllQuestions() {
+    return await db.select().from(questions).orderBy((0, import_drizzle_orm3.desc)(questions.createdAt));
+  }
+  async getQuestionById(id) {
+    const [question] = await db.select().from(questions).where((0, import_drizzle_orm3.eq)(questions.id, id));
+    return question;
+  }
+  async updateQuestion(id, questionData) {
+    const [question] = await db.update(questions).set(questionData).where((0, import_drizzle_orm3.eq)(questions.id, id)).returning();
+    return question;
+  }
+  async deleteQuestion(id) {
+    await db.delete(questions).where((0, import_drizzle_orm3.eq)(questions.id, id));
+  }
 };
 var storage = new DatabaseStorage();
 
@@ -715,51 +797,40 @@ var isAuthenticated = async (req, res, next) => {
 // server/email.ts
 var import_nodemailer = __toESM(require("nodemailer"), 1);
 var transporter = import_nodemailer.default.createTransport({
-  host: process.env.SMTP_HOST || "smtp.hostinger.com",
-  port: parseInt(process.env.SMTP_PORT || "465"),
-  secure: parseInt(process.env.SMTP_PORT || "465") === 465,
+  host: process.env.EMAIL_HOST || "smtp.gmail.com",
+  port: parseInt(process.env.EMAIL_PORT || "587"),
+  secure: process.env.EMAIL_SECURE === "true",
   // true for 465, false for other ports
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
   }
 });
-async function sendPasswordResetEmail(email, token, origin = "https://whypals.com") {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn("SMTP credentials not found in environment variables. Email sending skipped.");
-    console.log(`Mock email to ${email}: Token is ${token}`);
-    return false;
-  }
+async function sendPasswordResetEmail(email, token, origin) {
   const resetLink = `${origin}/reset-password?token=${token}`;
   const mailOptions = {
-    from: `"WhyPals Support" <${process.env.SMTP_USER}>`,
+    from: process.env.EMAIL_FROM || '"WhyPals" <noreply@whypals.com>',
     to: email,
-    subject: "Whypals Password Reset",
-    text: `You requested a password reset. Please click the following link to reset your password: ${resetLink} . This link will expire in 15 minutes.`,
+    subject: "Password Reset Request",
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Password Reset Request</h2>
-        <p>You requested a password reset for your WhyPals account.</p>
-        <p>Please click the button below to reset your password:</p>
-        <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
-        <p>Or copy and paste this link into your browser:</p>
-        <p><a href="${resetLink}">${resetLink}</a></p>
-        <p>This link will expire in 15 minutes.</p>
-        <p>If you didn't request this, you can safely ignore this email.</p>
-      </div>
+      <p>You requested a password reset.</p>
+      <p>Click the link below to reset your password:</p>
+      <a href="${resetLink}">${resetLink}</a>
+      <p>If you didn't request this, please ignore this email.</p>
     `
   };
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log("Message sent: %s", info.messageId);
+    console.log("Password reset email sent: %s", info.messageId);
     return true;
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("Error sending password reset email:", error);
     return false;
   }
 }
 
 // server/routes.ts
+var import_zod2 = require("zod");
 var import_zod_validation_error = require("zod-validation-error");
 
 // server/r2.ts
@@ -1484,6 +1555,63 @@ async function registerRoutes(httpServer2, app2) {
       res.status(500).json({ message: "Failed to fetch story" });
     }
   });
+  app2.post("/api/stories/:id/view", async (req, res) => {
+    try {
+      const idParam = req.params.id;
+      let storyId;
+      const idNum = parseInt(idParam);
+      if (isNaN(idNum)) {
+        const story = await storage.getStoryBySlug(idParam);
+        storyId = story?.id;
+      } else {
+        storyId = idNum;
+      }
+      if (!storyId) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+      const userId = getUserIdFromRequest(req);
+      await storage.addStoryView(storyId, userId ?? void 0);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording story view:", error);
+      res.status(500).json({ message: "Failed to record view" });
+    }
+  });
+  app2.post("/api/stories/:id/read-aloud", async (req, res) => {
+    try {
+      const idParam = req.params.id;
+      let storyId;
+      const idNum = parseInt(idParam);
+      if (isNaN(idNum)) {
+        const story = await storage.getStoryBySlug(idParam);
+        storyId = story?.id;
+      } else {
+        storyId = idNum;
+      }
+      if (!storyId) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+      const userId = getUserIdFromRequest(req);
+      await storage.addStoryReaderPlay(storyId, userId ?? void 0);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording reader play:", error);
+      res.status(500).json({ message: "Failed to record reader play" });
+    }
+  });
+  app2.get("/api/admin/story-stats", async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const excluded = ["samueljuliustansil@gmail.com", "meixiu.low@gmail.com"];
+      const stats = await storage.getAllStoryStats(excluded);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching story stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
   app2.post("/api/admin/upload/image", upload.single("image"), async (req, res) => {
     try {
       if (!isValidAdminSession(req)) {
@@ -1721,6 +1849,79 @@ async function registerRoutes(httpServer2, app2) {
     } catch (error) {
       console.error("Error deleting story:", error);
       res.status(500).json({ message: "Failed to delete story" });
+    }
+  });
+  app2.get("/api/questions/published", async (_req, res) => {
+    try {
+      const questions2 = await storage.getPublishedQuestions();
+      res.json(questions2);
+    } catch (error) {
+      console.error("Error fetching published questions:", error);
+      res.status(500).json({ message: "Failed to fetch questions" });
+    }
+  });
+  app2.post("/api/questions", async (req, res) => {
+    try {
+      const schema = import_zod2.z.object({
+        storyId: import_zod2.z.number(),
+        question: import_zod2.z.string().min(1)
+      });
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: (0, import_zod_validation_error.fromZodError)(result.error).message });
+      }
+      const userId = req.session?.userId || null;
+      const question = await storage.createQuestion({
+        storyId: result.data.storyId,
+        question: result.data.question,
+        userId
+      });
+      res.status(201).json(question);
+    } catch (error) {
+      console.error("Error creating question:", error);
+      res.status(500).json({ message: "Failed to submit question" });
+    }
+  });
+  app2.get("/api/admin/questions", async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const questions2 = await storage.getAllQuestions();
+      res.json(questions2);
+    } catch (error) {
+      console.error("Error fetching admin questions:", error);
+      res.status(500).json({ message: "Failed to fetch questions" });
+    }
+  });
+  app2.patch("/api/admin/questions/:id", async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const id = parseInt(req.params.id);
+      const result = updateQuestionSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: (0, import_zod_validation_error.fromZodError)(result.error).message });
+      }
+      const question = await storage.updateQuestion(id, result.data);
+      res.json(question);
+    } catch (error) {
+      console.error("Error updating question:", error);
+      res.status(500).json({ message: "Failed to update question" });
+    }
+  });
+  app2.delete("/api/admin/questions/:id", async (req, res) => {
+    try {
+      if (!isValidAdminSession(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const id = parseInt(req.params.id);
+      await storage.deleteQuestion(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      res.status(500).json({ message: "Failed to delete question" });
     }
   });
   app2.get("/api/admin/videos", async (req, res) => {
@@ -2341,7 +2542,7 @@ app.use((req, res, next) => {
     throw err;
   });
   serveStatic(app);
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt(process.env.PORT || "3000", 10);
   httpServer.listen(
     {
       port,
